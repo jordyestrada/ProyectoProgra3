@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    # When running the application from the host (mvnd/mvn/IDE) and exposing Postgres with docker-compose
+    # the host should be 'localhost' and the container port is forwarded to 5433 on the host.
+    url: jdbc:postgresql://localhost:5433/reservas
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  security:
+    user:
+      name: testuser
+      password: testpass
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
