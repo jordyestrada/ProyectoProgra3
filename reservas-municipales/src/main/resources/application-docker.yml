@@ -20,6 +20,27 @@ spring:
       name: testuser
       password: testpass
 
+  # Azure AD Configuration
+  cloud:
+    azure:
+      compatibility-verifier:
+        enabled: false  # Disable compatibility check for now
+      active-directory:
+        enabled: true
+        profile:
+          tenant-id: ${AZURE_TENANT_ID:your-tenant-id-here}
+        credential:
+          client-id: ${AZURE_CLIENT_ID:your-client-id-here}
+          client-secret: ${AZURE_CLIENT_SECRET:your-client-secret-here}
+        app-id-uri: ${AZURE_APP_ID_URI:api://your-app-id-here}
+
+# JWT Configuration
+app:
+  jwt:
+    secret: ${JWT_SECRET:mySecretKey123456789012345678901234567890}
+    expiration: 86400000 # 24 hours
+    issuer: reservas-municipales
+
 management:
   endpoints:
     web:
@@ -28,3 +49,9 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+# Logging
+logging:
+  level:
+    cr.una.reservas_municipales: DEBUG
+    org.springframework.security: DEBUG
