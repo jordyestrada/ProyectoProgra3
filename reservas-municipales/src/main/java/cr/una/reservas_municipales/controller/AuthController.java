@@ -9,7 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,10 +24,28 @@ public class AuthController {
     private final AuthenticationService authenticationService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> authenticateUser(@RequestBody String rawBody, HttpServletRequest request) {
         try {
+            log.debug("Raw request body: {}", rawBody);
+            log.debug("Content-Type header: {}", request.getHeader("Content-Type"));
+            
+            // Manually parse the JSON for now
+            ObjectMapper mapper = new ObjectMapper();
+            LoginRequest loginRequest = mapper.readValue(rawBody, LoginRequest.class);
+            
+            log.debug("Parsed login request - Email: {}, Password provided: {}, Azure token provided: {}", 
+                loginRequest.getEmail(), 
+                loginRequest.getPassword() != null ? "YES" : "NO",
+                loginRequest.getAzureToken() != null ? "YES" : "NO");
+            
             JwtResponse jwtResponse = authenticationService.authenticateUser(loginRequest);
             return ResponseEntity.ok(jwtResponse);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            log.error("JSON parsing error: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Invalid JSON format");
+            error.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         } catch (BadCredentialsException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Authentication failed");

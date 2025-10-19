@@ -23,14 +23,24 @@ public class AuthenticationService {
 
     public JwtResponse authenticateUser(LoginRequest loginRequest) {
         try {
+            log.debug("Processing authentication request for email: {}", loginRequest.getEmail());
+            log.debug("Azure token present: {}", loginRequest.getAzureToken() != null && !loginRequest.getAzureToken().isEmpty());
+            log.debug("Email and password present: {}", loginRequest.getEmail() != null && loginRequest.getPassword() != null);
+            
             if (loginRequest.getAzureToken() != null && !loginRequest.getAzureToken().isEmpty()) {
+                log.debug("Attempting Azure AD authentication");
                 return authenticateWithAzureAD(loginRequest.getAzureToken());
             }
             
             if (loginRequest.getEmail() != null && loginRequest.getPassword() != null) {
+                log.debug("Attempting local credentials authentication");
                 return authenticateWithLocalCredentials(loginRequest.getEmail(), loginRequest.getPassword());
             }
             
+            log.debug("No valid authentication method provided - Email: {}, Password: {}, Azure Token: {}", 
+                loginRequest.getEmail(), 
+                loginRequest.getPassword() != null ? "[PRESENT]" : "[NULL]",
+                loginRequest.getAzureToken() != null ? "[PRESENT]" : "[NULL]");
             throw new BadCredentialsException("No valid authentication method provided");
             
         } catch (Exception e) {

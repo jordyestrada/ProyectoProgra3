@@ -25,6 +25,7 @@ CREATE TABLE app_user (
   email         citext NOT NULL UNIQUE,
   full_name     text NOT NULL,
   phone         text,
+  password_hash text,                        -- Para autenticación local
   role_code     text NOT NULL,
   active        boolean NOT NULL DEFAULT true,
   created_at    timestamptz NOT NULL DEFAULT now(),

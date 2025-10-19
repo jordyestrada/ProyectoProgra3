@@ -7,38 +7,38 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "espacio")
+@Table(name = "space")
 @Data
 public class Space {
     @Id
-    @Column(name = "id_espacio")
+    @Column(name = "space_id")
     private UUID spaceId;
 
-    @Column(name = "nombre", nullable = false, unique = true)
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @Column(name = "id_tipo_espacio", nullable = false)
+    @Column(name = "space_type_id", nullable = false)
     private Short spaceTypeId;
 
-    @Column(name = "capacidad", nullable = false)
+    @Column(name = "capacity", nullable = false)
     private Integer capacity;
 
-    @Column(name = "ubicacion")
+    @Column(name = "location")
     private String location;
 
-    @Column(name = "exterior", nullable = false)
+    @Column(name = "outdoor", nullable = false)
     private boolean outdoor;
 
-    @Column(name = "activo", nullable = false)
+    @Column(name = "active", nullable = false)
     private boolean active;
 
-    @Column(name = "descripcion")
+    @Column(name = "description")
     private String description;
 
-    @Column(name = "creado_en", nullable = false)
+    @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
-    @Column(name = "actualizado_en", nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 }
 

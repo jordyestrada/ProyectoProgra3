@@ -33,28 +33,6 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
-  endpoint:
-    health:
-      show-details: always
-
-# Logging for development
-logging:
-  level:
-    cr.una.reservas_municipales: DEBUG
-    org.springframework.security: DEBUG
-
-# JWT Configuration
-app:
-  jwt:
-    secret: myDevSecretKey123456789012345678901234567890
-    expiration: 86400000 # 24 hours
-    issuer: reservas-municipales-dev
-
-management:
-  endpoints:
-    web:
-      exposure:
         include: health,info,beans,env
   endpoint:
     health:

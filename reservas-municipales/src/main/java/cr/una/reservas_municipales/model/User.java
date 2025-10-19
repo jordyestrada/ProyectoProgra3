@@ -23,6 +23,9 @@ public class User {
     @Column(name = "phone")
     private String phone;
 
+    @Column(name = "password_hash")
+    private String passwordHash;
+
     @ManyToOne
     @JoinColumn(name = "role_code", referencedColumnName = "code", nullable = false)
     private Role role;
