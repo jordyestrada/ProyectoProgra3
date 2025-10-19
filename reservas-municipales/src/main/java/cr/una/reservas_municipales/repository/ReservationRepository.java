@@ -2,8 +2,37 @@ package cr.una.reservas_municipales.repository;
 
 import cr.una.reservas_municipales.model.Reservation;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
+@Repository
 public interface ReservationRepository extends JpaRepository<Reservation, UUID> {
+    
+    // Encontrar reservas por usuario
+    List<Reservation> findByUserIdOrderByStartsAtDesc(UUID userId);
+    
+    // Encontrar reservas por espacio
+    List<Reservation> findBySpaceIdOrderByStartsAtDesc(UUID spaceId);
+    
+    // Encontrar reservas por estado
+    List<Reservation> findByStatusOrderByStartsAtDesc(String status);
+    
+    // Verificar conflictos de horario para un espacio específico
+    @Query("SELECT r FROM Reservation r WHERE r.spaceId = :spaceId " +
+           "AND r.status IN ('CONFIRMED', 'PENDING') " +
+           "AND ((r.startsAt <= :endsAt AND r.endsAt >= :startsAt))")
+    List<Reservation> findConflictingReservations(@Param("spaceId") UUID spaceId,
+                                                  @Param("startsAt") OffsetDateTime startsAt,
+                                                  @Param("endsAt") OffsetDateTime endsAt);
+    
+    // Encontrar reservas en un rango de fechas
+    @Query("SELECT r FROM Reservation r WHERE r.startsAt >= :startDate AND r.endsAt <= :endDate " +
+           "ORDER BY r.startsAt ASC")
+    List<Reservation> findReservationsInDateRange(@Param("startDate") OffsetDateTime startDate,
+                                                  @Param("endDate") OffsetDateTime endDate);
 }

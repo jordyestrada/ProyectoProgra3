@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/reservas  # Puerto correcto para Docker
+    url: jdbc:postgresql://localhost:5433/reservas_municipales  # Nombre correcto de la base
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
