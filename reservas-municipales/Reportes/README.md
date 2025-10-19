@@ -11,8 +11,18 @@ POST http://localhost:8080/api/auth/login
 Content-Type: application/json
 
 {
-    "username": "admin@test.com",
-    "password": "admin123"
+    "email": "admin@test.com",
+    "password": "testpass"
+}
+
+{
+    "email": "supervisor@test.com",
+    "password": "testpass"
+}
+
+{
+    "email": "user@test.com",
+    "password": "testpass"
 }
 ```
 
@@ -152,11 +162,91 @@ DELETE http://localhost:8080/api/reservations/{id}
 
 ---
 
+## ReviewController
+
+### Obtener todas las reseñas
+```
+GET http://localhost:8080/api/reviews
+```
+
+### Obtener reseña por ID
+```
+GET http://localhost:8080/api/reviews/[id]
+```
+
+### Obtener reseñas por espacio
+```
+GET http://localhost:8080/api/reviews/space/[id]
+```
+
+### Obtener reseñas por usuario
+```
+GET http://localhost:8080/api/reviews/user/[id]
+```
+
+### Obtener estadísticas de un espacio
+```
+GET http://localhost:8080/api/reviews/space/[id]/statistics
+```
+
+**Response:**
+```json
+{
+    "spaceId": "[id]",
+    "averageRating": 4.5,
+    "totalReviews": 10,
+    "ratingDistribution": {
+        "1": 0,
+        "2": 1,
+        "3": 2,
+        "4": 3,
+        "5": 4
+    }
+}
+```
+
+### Crear reseña
+```
+POST http://localhost:8080/api/reviews
+Content-Type: application/json
+
+{
+    "spaceId": "[id]",
+    "userId": "[id]",
+    "reservationId": "[id]",
+    "rating": 5,
+    "comment": "Excelente espacio, muy limpio y bien equipado",
+    "visible": true
+}
+```
+
+### Actualizar reseña
+```
+PUT http://localhost:8080/api/reviews/[id]
+Content-Type: application/json
+
+{
+    "rating": 4,
+    "comment": "Muy buen espacio, pero podría mejorar la iluminación",
+    "visible": true
+}
+```
+
+### Eliminar reseña (Solo ADMIN)
+```
+DELETE http://localhost:8080/api/reviews/[id]
+```
+
+---
+
 ## Estados válidos para reservas
 - PENDING
 - CONFIRMED
 - CANCELLED
 - COMPLETED
+
+## Rangos válidos para calificaciones
+- Rating: 1-5 (1 = Muy malo, 5 = Excelente)
 
 ## Tipos de espacio disponibles
 - 1: Parque

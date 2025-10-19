@@ -10,6 +10,7 @@ import java.time.OffsetDateTime;
 @Data
 public class ReviewEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "review_id")
     private Long reviewId;
 
@@ -36,4 +37,14 @@ public class ReviewEntity {
 
     @Column(name = "approved_at")
     private OffsetDateTime approvedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now();
+        }
+        if (visible == false && visible != true) { // Establece valor por defecto
+            visible = true;
+        }
+    }
 }
