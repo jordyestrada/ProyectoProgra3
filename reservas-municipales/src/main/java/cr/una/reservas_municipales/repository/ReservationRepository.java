@@ -35,4 +35,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
            "ORDER BY r.startsAt ASC")
     List<Reservation> findReservationsInDateRange(@Param("startDate") OffsetDateTime startDate,
                                                   @Param("endDate") OffsetDateTime endDate);
+    
+    // Encontrar espacios ocupados en un rango de fechas
+    @Query("SELECT DISTINCT r.spaceId FROM Reservation r WHERE r.status IN ('CONFIRMED', 'PENDING') " +
+           "AND ((r.startsAt <= :endsAt AND r.endsAt >= :startsAt))")
+    List<UUID> findOccupiedSpaceIds(@Param("startsAt") OffsetDateTime startsAt,
+                                   @Param("endsAt") OffsetDateTime endsAt);
 }

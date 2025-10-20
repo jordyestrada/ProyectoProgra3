@@ -58,6 +58,60 @@ public class SpaceController {
     }
 
     /**
+     * GET /api/spaces/search - Búsqueda avanzada de espacios
+     * Parámetros de consulta opcionales para filtrar espacios
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<SpaceDto>> searchSpaces(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Integer spaceTypeId,
+            @RequestParam(required = false) Integer minCapacity,
+            @RequestParam(required = false) Integer maxCapacity,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) Boolean outdoor,
+            @RequestParam(required = false, defaultValue = "true") Boolean activeOnly) {
+        
+        log.info("Advanced search - name: {}, type: {}, minCap: {}, maxCap: {}, location: {}, outdoor: {}, activeOnly: {}", 
+                name, spaceTypeId, minCapacity, maxCapacity, location, outdoor, activeOnly);
+        
+        try {
+            List<SpaceDto> results = spaceService.searchSpaces(
+                name, spaceTypeId, minCapacity, maxCapacity, location, outdoor, activeOnly);
+            
+            log.info("Search returned {} results", results.size());
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            log.error("Error in advanced search", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * GET /api/spaces/available - Buscar espacios disponibles en un rango de tiempo
+     */
+    @GetMapping("/available")
+    public ResponseEntity<List<SpaceDto>> getAvailableSpaces(
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @RequestParam(required = false) Integer spaceTypeId,
+            @RequestParam(required = false) Integer minCapacity) {
+        
+        log.info("Searching available spaces from {} to {} with typeId: {}, minCapacity: {}", 
+                startDate, endDate, spaceTypeId, minCapacity);
+        
+        try {
+            List<SpaceDto> availableSpaces = spaceService.findAvailableSpaces(
+                startDate, endDate, spaceTypeId, minCapacity);
+            
+            log.info("Found {} available spaces", availableSpaces.size());
+            return ResponseEntity.ok(availableSpaces);
+        } catch (Exception e) {
+            log.error("Error searching available spaces", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
      * GET /api/spaces/{id} - Obtener espacio por ID
      */
     @GetMapping("/{id}")

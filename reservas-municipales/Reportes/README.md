@@ -84,7 +84,23 @@ Content-Type: application/json
 
 ### Eliminar espacio
 ```
-DELETE http://localhost:8080/api/spaces/{id}
+DELETE http://localhost:8080/api/spaces/{id]
+```
+
+### Búsqueda avanzada de espacios
+```
+GET http://localhost:8080/api/spaces/search?name=parque
+GET http://localhost:8080/api/spaces/search?minCapacity=50&maxCapacity=200
+GET http://localhost:8080/api/spaces/search?outdoor=true
+GET http://localhost:8080/api/spaces/search?location=centro
+GET http://localhost:8080/api/spaces/search?spaceTypeId=1
+GET http://localhost:8080/api/spaces/search?name=parque&outdoor=true&minCapacity=100
+```
+
+### Buscar espacios disponibles por fechas
+```
+GET http://localhost:8080/api/spaces/available?startDate=2025-10-20T08:00:00-06:00&endDate=2025-10-20T18:00:00-06:00
+GET http://localhost:8080/api/spaces/available?startDate=2025-10-20T14:00:00-06:00&endDate=2025-10-20T16:00:00-06:00&minCapacity=50&spaceTypeId=1
 ```
 
 ---
@@ -158,6 +174,32 @@ PATCH http://localhost:8080/api/reservations/{id}/cancel?reason=Usuario no puede
 ### Eliminar reserva
 ```
 DELETE http://localhost:8080/api/reservations/{id}
+```
+
+### 📱 Obtener código QR (JSON con Base64)
+```
+GET http://localhost:8080/api/reservations/{id}/qr
+```
+
+### 🖼️ Obtener código QR como imagen PNG
+```
+GET http://localhost:8080/api/reservations/{id}/qr/image
+```
+
+### ✅ Validar QR y marcar asistencia
+```
+POST http://localhost:8080/api/reservations/{id}/validate-qr
+Content-Type: application/json
+
+{
+    "qrContent": "RESERVA:99d7391f-3a53-459d-a41a-f5996cea0082:550e8400-e29b-41d4-a716-446655440000:21056e13-415e-486c-9fd6-94d5f6af08e8:1729377298000",
+    "validationToken": "cualquier-token"
+}
+```
+
+### 🔄 Regenerar código QR (Solo ADMIN/SUPERVISOR)
+```
+POST http://localhost:8080/api/reservations/{id}/regenerate-qr
 ```
 
 ---

@@ -43,4 +43,11 @@ public class ReservationDto {
     
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    
+    // Campos para QR y asistencia
+    private String qrCode;
+    private String qrValidationToken;
+    private Boolean attendanceConfirmed = false;
+    private OffsetDateTime attendanceConfirmedAt;
+    private UUID confirmedByUserId;
 }

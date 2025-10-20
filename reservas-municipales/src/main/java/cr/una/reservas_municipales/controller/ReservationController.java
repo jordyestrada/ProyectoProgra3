@@ -1,6 +1,7 @@
 package cr.una.reservas_municipales.controller;
 
 import cr.una.reservas_municipales.dto.ReservationDto;
+import cr.una.reservas_municipales.dto.QRValidationDto;
 import cr.una.reservas_municipales.service.ReservationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -9,10 +10,12 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -177,6 +180,140 @@ public class ReservationController {
             }
         } catch (Exception e) {
             log.error("Error al eliminar reserva con ID: " + id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    // ===== ENDPOINTS QR =====
+    
+    /**
+     * POST /api/reservations/{id}/validate-qr - Validar código QR y marcar asistencia
+     */
+    @PostMapping("/{id}/validate-qr")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
+    public ResponseEntity<QRValidationDto> validateQRCode(@PathVariable UUID id,
+                                                         @RequestBody QRValidationDto validationRequest,
+                                                         Authentication authentication) {
+        log.info("POST /api/reservations/{}/validate-qr - Validando código QR", id);
+        
+        try {
+            // Obtener el usuario que está validando (podría ser el mismo usuario o un supervisor)
+            String userEmail = authentication.getName();
+            log.info("QR validation requested by user: {}", userEmail);
+            
+            // Por simplicidad, usamos un UUID fijo para el validador
+            // En una implementación completa, consultaríamos la base de datos del usuario
+            UUID validatedByUserId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+            
+            QRValidationDto result = reservationService.validateQRAndMarkAttendance(
+                id, validationRequest.getQrContent(), validatedByUserId);
+            
+            if (result.getIsValid()) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error validating QR for reservation: " + id, e);
+            QRValidationDto errorResult = new QRValidationDto(id, false, "Error interno del servidor");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResult);
+        }
+    }
+    
+    /**
+     * POST /api/reservations/{id}/regenerate-qr - Regenerar código QR
+     */
+    @PostMapping("/{id}/regenerate-qr")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
+    public ResponseEntity<Map<String, String>> regenerateQRCode(@PathVariable UUID id) {
+        log.info("POST /api/reservations/{}/regenerate-qr - Regenerando código QR", id);
+        
+        try {
+            String newQRCode = reservationService.regenerateQRCode(id);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Código QR regenerado exitosamente",
+                "reservationId", id.toString(),
+                "qrCode", newQRCode
+            ));
+            
+        } catch (RuntimeException e) {
+            log.error("Business error regenerating QR for reservation: " + id, e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "Error de negocio",
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Internal error regenerating QR for reservation: " + id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "error", "Error interno del servidor",
+                "message", "No se pudo regenerar el código QR"
+            ));
+        }
+    }
+    
+    /**
+     * GET /api/reservations/{id}/qr - Obtener código QR de la reserva
+     */
+    @GetMapping("/{id}/qr")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
+    public ResponseEntity<Map<String, Object>> getReservationQR(@PathVariable UUID id) {
+        log.info("GET /api/reservations/{}/qr - Obteniendo código QR", id);
+        
+        try {
+            ReservationDto reservation = reservationService.getReservationById(id);
+            if (reservation == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            if (reservation.getQrCode() == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Esta reserva no tiene código QR generado"
+                ));
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "reservationId", reservation.getReservationId().toString(),
+                "qrCode", reservation.getQrCode(),
+                "attendanceConfirmed", reservation.getAttendanceConfirmed(),
+                "attendanceConfirmedAt", reservation.getAttendanceConfirmedAt()
+            ));
+            
+        } catch (Exception e) {
+            log.error("Error getting QR for reservation: " + id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * GET /api/reservations/{id}/qr/image - Obtener código QR como imagen PNG directa
+     */
+    @GetMapping(value = "/{id}/qr/image", produces = "image/png")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
+    public ResponseEntity<byte[]> getReservationQRImage(@PathVariable UUID id) {
+        log.info("GET /api/reservations/{}/qr/image - Obteniendo imagen QR", id);
+        
+        try {
+            ReservationDto reservation = reservationService.getReservationById(id);
+            if (reservation == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            if (reservation.getQrCode() == null) {
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // Decodificar Base64 a bytes
+            byte[] qrImageBytes = java.util.Base64.getDecoder().decode(reservation.getQrCode());
+            
+            return ResponseEntity.ok()
+                    .header("Content-Type", "image/png")
+                    .header("Content-Disposition", "inline; filename=qr-reservation-" + id + ".png")
+                    .body(qrImageBytes);
+            
+        } catch (Exception e) {
+            log.error("Error getting QR image for reservation: " + id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

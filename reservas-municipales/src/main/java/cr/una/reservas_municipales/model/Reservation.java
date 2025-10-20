@@ -47,4 +47,19 @@ public class Reservation {
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Column(name = "qr_code", columnDefinition = "TEXT")
+    private String qrCode;
+
+    @Column(name = "qr_validation_token")
+    private String qrValidationToken;
+
+    @Column(name = "attendance_confirmed", nullable = false)
+    private Boolean attendanceConfirmed = false;
+
+    @Column(name = "attendance_confirmed_at")
+    private OffsetDateTime attendanceConfirmedAt;
+
+    @Column(name = "confirmed_by_user_id")
+    private UUID confirmedByUserId;
 }

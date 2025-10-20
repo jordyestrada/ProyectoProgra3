@@ -1,6 +1,7 @@
 package cr.una.reservas_municipales.service;
 
 import cr.una.reservas_municipales.dto.ReservationDto;
+import cr.una.reservas_municipales.dto.QRValidationDto;
 import cr.una.reservas_municipales.model.Reservation;
 import cr.una.reservas_municipales.repository.ReservationRepository;
 import cr.una.reservas_municipales.repository.SpaceRepository;
@@ -23,6 +24,7 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final SpaceRepository spaceRepository;
     private final UserRepository userRepository;
+    private final QRCodeService qrCodeService;
     
     @Transactional(readOnly = true)
     public List<ReservationDto> getAllReservations() {
@@ -113,6 +115,25 @@ public class ReservationService {
         // Si no se especifica moneda, se asigna CRC por defecto
         if (reservation.getCurrency() == null || reservation.getCurrency().isEmpty()) {
             reservation.setCurrency("CRC");
+        }
+        
+        // Generar código QR automáticamente para la reserva
+        try {
+            String qrCode = qrCodeService.generateQRCode(
+                reservation.getReservationId(),
+                reservation.getUserId(),
+                reservation.getSpaceId()
+            );
+            String validationToken = qrCodeService.generateValidationToken(reservation.getReservationId());
+            
+            reservation.setQrCode(qrCode);
+            reservation.setQrValidationToken(validationToken);
+            reservation.setAttendanceConfirmed(false);
+            
+            log.info("QR code generated successfully for reservation: {}", reservation.getReservationId());
+        } catch (Exception e) {
+            log.error("Error generating QR code for reservation: {}", reservation.getReservationId(), e);
+            // No fallar toda la operación si solo falla la generación del QR
         }
         
         Reservation saved = reservationRepository.save(reservation);
@@ -233,6 +254,14 @@ public class ReservationService {
         dto.setCurrency(reservation.getCurrency());
         dto.setCreatedAt(reservation.getCreatedAt());
         dto.setUpdatedAt(reservation.getUpdatedAt());
+        
+        // Campos QR y asistencia
+        dto.setQrCode(reservation.getQrCode());
+        dto.setQrValidationToken(reservation.getQrValidationToken());
+        dto.setAttendanceConfirmed(reservation.getAttendanceConfirmed());
+        dto.setAttendanceConfirmedAt(reservation.getAttendanceConfirmedAt());
+        dto.setConfirmedByUserId(reservation.getConfirmedByUserId());
+        
         return dto;
     }
     
@@ -250,6 +279,94 @@ public class ReservationService {
         reservation.setCurrency(dto.getCurrency());
         reservation.setCreatedAt(dto.getCreatedAt());
         reservation.setUpdatedAt(dto.getUpdatedAt());
+        
+        // Campos QR y asistencia
+        reservation.setQrCode(dto.getQrCode());
+        reservation.setQrValidationToken(dto.getQrValidationToken());
+        reservation.setAttendanceConfirmed(dto.getAttendanceConfirmed());
+        reservation.setAttendanceConfirmedAt(dto.getAttendanceConfirmedAt());
+        reservation.setConfirmedByUserId(dto.getConfirmedByUserId());
+        
         return reservation;
+    }
+    
+    /**
+     * Valida un código QR y marca la asistencia si es válido
+     */
+    @Transactional
+    public QRValidationDto validateQRAndMarkAttendance(UUID reservationId, String qrContent, UUID validatedByUserId) {
+        log.info("Validating QR for reservation: {}", reservationId);
+        
+        return reservationRepository.findById(reservationId)
+                .map(reservation -> {
+                    try {
+                        // Validar el código QR
+                        boolean isValidQR = qrCodeService.validateQRCode(qrContent, reservationId);
+                        
+                        if (!isValidQR) {
+                            return new QRValidationDto(reservationId, false, "Código QR inválido");
+                        }
+                        
+                        // Verificar que la reserva esté confirmada
+                        if (!"CONFIRMED".equals(reservation.getStatus())) {
+                            return new QRValidationDto(reservationId, false, "La reserva debe estar confirmada para validar asistencia");
+                        }
+                        
+                        // Verificar que no se haya marcado asistencia previamente
+                        if (Boolean.TRUE.equals(reservation.getAttendanceConfirmed())) {
+                            return new QRValidationDto(reservationId, false, "La asistencia ya fue confirmada previamente");
+                        }
+                        
+                        // Marcar asistencia confirmada
+                        reservation.setAttendanceConfirmed(true);
+                        reservation.setAttendanceConfirmedAt(OffsetDateTime.now());
+                        reservation.setConfirmedByUserId(validatedByUserId);
+                        reservation.setUpdatedAt(OffsetDateTime.now());
+                        
+                        reservationRepository.save(reservation);
+                        
+                        log.info("Attendance confirmed for reservation: {}", reservationId);
+                        return new QRValidationDto(reservationId, true, "Asistencia confirmada exitosamente");
+                        
+                    } catch (Exception e) {
+                        log.error("Error validating QR for reservation: {}", reservationId, e);
+                        return new QRValidationDto(reservationId, false, "Error interno al validar QR");
+                    }
+                })
+                .orElse(new QRValidationDto(reservationId, false, "Reserva no encontrada"));
+    }
+    
+    /**
+     * Regenera el código QR para una reserva existente
+     */
+    @Transactional
+    public String regenerateQRCode(UUID reservationId) {
+        log.info("Regenerating QR code for reservation: {}", reservationId);
+        
+        return reservationRepository.findById(reservationId)
+                .map(reservation -> {
+                    try {
+                        String newQRCode = qrCodeService.generateQRCode(
+                            reservation.getReservationId(),
+                            reservation.getUserId(),
+                            reservation.getSpaceId()
+                        );
+                        String newValidationToken = qrCodeService.generateValidationToken(reservation.getReservationId());
+                        
+                        reservation.setQrCode(newQRCode);
+                        reservation.setQrValidationToken(newValidationToken);
+                        reservation.setUpdatedAt(OffsetDateTime.now());
+                        
+                        reservationRepository.save(reservation);
+                        
+                        log.info("QR code regenerated successfully for reservation: {}", reservationId);
+                        return newQRCode;
+                        
+                    } catch (Exception e) {
+                        log.error("Error regenerating QR code for reservation: {}", reservationId, e);
+                        throw new RuntimeException("Failed to regenerate QR code", e);
+                    }
+                })
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
     }
 }

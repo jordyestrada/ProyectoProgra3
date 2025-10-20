@@ -3,12 +3,14 @@ package cr.una.reservas_municipales.service;
 import cr.una.reservas_municipales.dto.SpaceDto;
 import cr.una.reservas_municipales.model.Space;
 import cr.una.reservas_municipales.repository.SpaceRepository;
+import cr.una.reservas_municipales.repository.ReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SpaceService {
     private final SpaceRepository spaceRepository;
+    private final ReservationRepository reservationRepository;
 
     public List<SpaceDto> listAll() {
         return spaceRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
@@ -100,6 +103,112 @@ public class SpaceService {
         return spaceRepository.findAll().stream()
                 .anyMatch(space -> space.getName().equalsIgnoreCase(name) && 
                                  !space.getSpaceId().equals(excludeId));
+    }
+
+    /**
+     * Búsqueda avanzada de espacios con múltiples filtros
+     */
+    public List<SpaceDto> searchSpaces(String name, Integer spaceTypeId, Integer minCapacity, 
+                                      Integer maxCapacity, String location, Boolean outdoor, Boolean activeOnly) {
+        log.info("Performing advanced search with filters");
+        
+        return spaceRepository.findAll().stream()
+                .filter(space -> {
+                    // Filtro por estado activo
+                    if (activeOnly && !space.isActive()) {
+                        return false;
+                    }
+                    
+                    // Filtro por nombre (búsqueda parcial, case-insensitive)
+                    if (name != null && !name.trim().isEmpty()) {
+                        String searchName = name.toLowerCase().trim();
+                        if (!space.getName().toLowerCase().contains(searchName) && 
+                            (space.getDescription() == null || !space.getDescription().toLowerCase().contains(searchName))) {
+                            return false;
+                        }
+                    }
+                    
+                    // Filtro por tipo de espacio
+                    if (spaceTypeId != null && !spaceTypeId.equals((int) space.getSpaceTypeId())) {
+                        return false;
+                    }
+                    
+                    // Filtro por capacidad mínima
+                    if (minCapacity != null && space.getCapacity() < minCapacity) {
+                        return false;
+                    }
+                    
+                    // Filtro por capacidad máxima
+                    if (maxCapacity != null && space.getCapacity() > maxCapacity) {
+                        return false;
+                    }
+                    
+                    // Filtro por ubicación (búsqueda parcial)
+                    if (location != null && !location.trim().isEmpty()) {
+                        if (space.getLocation() == null || 
+                            !space.getLocation().toLowerCase().contains(location.toLowerCase().trim())) {
+                            return false;
+                        }
+                    }
+                    
+                    // Filtro por exterior/interior
+                    if (outdoor != null && !outdoor.equals(space.isOutdoor())) {
+                        return false;
+                    }
+                    
+                    return true;
+                })
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Buscar espacios disponibles en un rango de tiempo
+     */
+    public List<SpaceDto> findAvailableSpaces(String startDate, String endDate, 
+                                            Integer spaceTypeId, Integer minCapacity) {
+        log.info("Searching for available spaces from {} to {}", startDate, endDate);
+        
+        try {
+            // Parsear las fechas
+            OffsetDateTime startsAt = OffsetDateTime.parse(startDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            OffsetDateTime endsAt = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            
+            // Obtener IDs de espacios ocupados en el rango de fechas
+            List<UUID> occupiedSpaceIds = reservationRepository.findOccupiedSpaceIds(startsAt, endsAt);
+            log.info("Found {} occupied spaces in the date range", occupiedSpaceIds.size());
+            
+            return spaceRepository.findAll().stream()
+                    .filter(space -> {
+                        // Filtro por estado activo
+                        if (!space.isActive()) {
+                            return false;
+                        }
+                        
+                        // Verificar que el espacio NO esté ocupado
+                        if (occupiedSpaceIds.contains(space.getSpaceId())) {
+                            return false;
+                        }
+                        
+                        // Filtro por tipo de espacio
+                        if (spaceTypeId != null && !spaceTypeId.equals((int) space.getSpaceTypeId())) {
+                            return false;
+                        }
+                        
+                        // Filtro por capacidad mínima
+                        if (minCapacity != null && space.getCapacity() < minCapacity) {
+                            return false;
+                        }
+                        
+                        return true;
+                    })
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+                    
+        } catch (Exception e) {
+            log.error("Error parsing dates or searching available spaces", e);
+            throw new RuntimeException("Invalid date format or search error", e);
+        }
     }
 
     private SpaceDto toDto(Space s) {
