@@ -15,7 +15,7 @@ public class PermitAllSecurityConfig {
     @Bean
     public SecurityFilterChain permitAllSecurity(HttpSecurity http) throws Exception {
         http
-            .csrf().disable()
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
         return http.build();
     }
