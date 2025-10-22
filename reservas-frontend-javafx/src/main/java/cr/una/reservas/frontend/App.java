@@ -1,8 +1,10 @@
 package cr.una.reservas.frontend;
 
 import cr.una.reservas.frontend.data.ApiClient;
-import cr.una.reservas.frontend.ui.login.LoginView;
+import cr.una.reservas.frontend.util.NavigationManager;
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
@@ -17,16 +19,25 @@ public class App extends Application {
             // Inicializar cliente API
             ApiClient.initialize("http://localhost:8080");
             
-            // Mostrar pantalla de login
-            LoginView loginView = new LoginView();
-            Scene scene = new Scene(loginView.getView(), 400, 500);
+            // Configurar NavigationManager con el Stage principal
+            NavigationManager.getInstance().setPrimaryStage(primaryStage);
+            
+            // Cargar pantalla de login desde FXML
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/login.fxml"));
+            Parent root = loader.load();
+            
+            Scene scene = new Scene(root, 1024, 768);
             
             primaryStage.setTitle("Sistema de Reservas Municipales");
             primaryStage.setScene(scene);
-            primaryStage.setResizable(false);
+            primaryStage.setResizable(true);
+            primaryStage.setMaximized(false); // Inicia en tamaño normal, pero se puede maximizar
             primaryStage.show();
             
+            System.out.println("✅ Aplicación iniciada correctamente con login.fxml");
+            
         } catch (Exception e) {
+            System.err.println("❌ Error al iniciar aplicación: " + e.getMessage());
             e.printStackTrace();
         }
     }

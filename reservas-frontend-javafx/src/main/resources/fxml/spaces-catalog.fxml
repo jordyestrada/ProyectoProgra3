@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.ColumnConstraints?>
+
+<!--
+  Catálogo de Espacios
+  Sistema de Reservas - Municipalidad de Pérez Zeledón
+  
+  Estructura:
+  - BorderPane con Navbar y Sidebar (reutilizados)
+  - Centro: VBox con header, search bar, filtros y grid de espacios
+-->
+
+<BorderPane fx:id="rootPane" prefWidth="1440.0" prefHeight="900.0" 
+            styleClass="border-pane-root"
+            stylesheets="@../styles.css"
+            xmlns="http://javafx.com/javafx/21" 
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="cr.una.reservas.frontend.ui.spaces.SpacesCatalogController">
+    
+    <!-- NAVBAR (incluir desde dashboard) -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16.0" prefHeight="72.0" styleClass="navbar">
+            <ImageView fitHeight="40.0" preserveRatio="true">
+                <!-- Logo aquí -->
+            </ImageView>
+            <Label text="Sistema de Reservas" styleClass="navbar-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="🔔" styleClass="button-icon"/>
+            <Label text="Usuario" styleClass="navbar-user"/>
+        </HBox>
+    </top>
+    
+    <!-- SIDEBAR (incluir desde dashboard) -->
+    <left>
+        <VBox spacing="8.0" prefWidth="280.0" styleClass="sidebar">
+            <!-- User Info -->
+            <VBox alignment="CENTER" spacing="8.0" styleClass="sidebar-user-info">
+                <ImageView fitWidth="64.0" fitHeight="64.0" preserveRatio="true" styleClass="sidebar-avatar"/>
+                <Label text="Usuario" styleClass="sidebar-username"/>
+                <Label text="Cliente" styleClass="sidebar-role"/>
+            </VBox>
+            <Separator/>
+            
+            <!-- Menu Items -->
+            <Button text="📊 Dashboard" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="🏢 Espacios" styleClass="menu-item, menu-item-active" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="📅 Mis Reservas" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="📆 Calendario" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="⚙️ Configuración" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+        </VBox>
+    </left>
+    
+    <!-- CONTENT -->
+    <center>
+        <VBox spacing="0.0" styleClass="content-container">
+            <padding>
+                <Insets top="32" right="32" bottom="32" left="32"/>
+            </padding>
+            
+            <!-- Header -->
+            <HBox alignment="CENTER_LEFT" spacing="16.0">
+                <padding>
+                    <Insets bottom="32"/>
+                </padding>
+                
+                <Label text="Espacios Disponibles" styleClass="text-h2"/>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <!-- Botón Nuevo Espacio (Solo Admin) -->
+                <Button fx:id="nuevoEspacioBtn" text="+ Nuevo Espacio" 
+                        onAction="#handleNuevoEspacio"
+                        styleClass="button-primary"
+                        visible="false" managed="false"/>
+            </HBox>
+            
+            <!-- Search Bar y Filtros -->
+            <HBox alignment="CENTER_LEFT" spacing="16.0" prefHeight="56.0">
+                <padding>
+                    <Insets bottom="32"/>
+                </padding>
+                
+                <!-- Campo de Búsqueda -->
+                <TextField fx:id="searchField" promptText="🔍 Buscar espacios..." 
+                           prefWidth="400.0" prefHeight="48.0"
+                           onKeyReleased="#handleSearch"
+                           styleClass="text-input"/>
+                
+                <!-- Filtro por Tipo -->
+                <ComboBox fx:id="tipoComboBox" promptText="Tipo de Espacio" 
+                          prefWidth="180.0" prefHeight="48.0"
+                          onAction="#handleFilter"
+                          styleClass="combo-box"/>
+                
+                <!-- Filtro por Capacidad -->
+                <ComboBox fx:id="capacidadComboBox" promptText="Capacidad" 
+                          prefWidth="180.0" prefHeight="48.0"
+                          onAction="#handleFilter"
+                          styleClass="combo-box"/>
+                
+                <!-- Botón Filtrar -->
+                <Button fx:id="filtrarBtn" text="Filtrar" 
+                        onAction="#handleFilter"
+                        styleClass="button-secondary"
+                        prefHeight="48.0"/>
+            </HBox>
+            
+            <!-- Grid de Espacios (ScrollPane) -->
+            <ScrollPane styleClass="scroll-pane-transparent" fitToWidth="true">
+                <VBox.vgrow>ALWAYS</VBox.vgrow>
+                
+                <GridPane fx:id="espaciosGrid" hgap="24.0" vgap="24.0">
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="33.33"/>
+                        <ColumnConstraints percentWidth="33.33"/>
+                        <ColumnConstraints percentWidth="33.33"/>
+                    </columnConstraints>
+                    
+                    <!-- Las cards de espacios se agregarán dinámicamente desde el controller -->
+                    
+                </GridPane>
+            </ScrollPane>
+            
+            <!-- Empty State (cuando no hay resultados) -->
+            <VBox fx:id="emptyState" styleClass="empty-state" alignment="CENTER" spacing="16.0" prefHeight="400.0" 
+                  visible="false" managed="false">
+                <Label text="🔍" styleClass="empty-state-icon"/>
+                <Label text="No se encontraron espacios" styleClass="empty-state-title"/>
+                <Label text="Intenta ajustar los filtros de búsqueda" styleClass="empty-state-description"/>
+            </VBox>
+        </VBox>
+    </center>
+    
+</BorderPane>

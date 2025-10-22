@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.Region?>
+
+<!--
+  Pantalla de Login
+  Sistema de Reservas - Municipalidad de Pérez Zeledón
+  
+  Estructura:
+  - VBox (root) con gradient background
+    - Logo (120x120px)
+    - Título y subtítulo
+    - Card de login con botón Azure AD
+    - Footer con copyright
+-->
+
+<VBox fx:id="rootContainer" alignment="CENTER" spacing="32.0" 
+      prefWidth="1024.0" prefHeight="768.0" 
+      styleClass="login-container"
+      stylesheets="@../styles.css"
+      xmlns="http://javafx.com/javafx/21" 
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="cr.una.reservas.frontend.ui.login.LoginController">
+    
+    <padding>
+        <Insets top="48" right="48" bottom="48" left="48"/>
+    </padding>
+    
+    <!-- Header Section -->
+    <VBox alignment="CENTER" spacing="16.0">
+        <!-- Logo -->
+        <ImageView fx:id="logoImageView" fitWidth="120.0" fitHeight="120.0" preserveRatio="true">
+            <!-- Image will be loaded from controller -->
+        </ImageView>
+        
+        <!-- Título Principal -->
+        <Label text="Sistema de Reservas" styleClass="text-h1">
+            <padding>
+                <Insets top="8" bottom="4"/>
+            </padding>
+        </Label>
+        
+        <!-- Subtítulo -->
+        <Label text="Municipalidad de Pérez Zeledón" styleClass="text-body-lg, text-muted"/>
+    </VBox>
+    
+    <!-- Login Card -->
+    <VBox fx:id="loginCard" alignment="CENTER" spacing="24.0" maxWidth="480.0"
+          styleClass="login-card">
+        
+        <padding>
+            <Insets top="40" right="40" bottom="40" left="40"/>
+        </padding>
+        
+        <!-- Instrucción -->
+        <Label text="Inicia sesión para acceder al sistema" 
+               styleClass="text-body, text-muted"
+               wrapText="true"/>
+        
+        <!-- Login Button -->
+        <Button fx:id="loginButton" text="Iniciar Sesión con Azure AD" 
+                styleClass="button-primary"
+                maxWidth="Infinity" prefHeight="56.0"
+                onAction="#handleLogin">
+            <VBox.margin>
+                <Insets top="8"/>
+            </VBox.margin>
+        </Button>
+        
+        <!-- Progress Indicator (hidden by default) -->
+        <ProgressIndicator fx:id="progressIndicator" visible="false" prefWidth="32.0" prefHeight="32.0"/>
+        
+        <!-- Spacer -->
+        <Region prefHeight="16.0"/>
+        
+        <!-- Ayuda Link -->
+        <Hyperlink fx:id="helpLink" text="¿Necesitas ayuda?" 
+                   onAction="#handleHelp"
+                   styleClass="hyperlink"/>
+    </VBox>
+    
+    <!-- Spacer para empujar el footer hacia abajo -->
+    <Region VBox.vgrow="ALWAYS"/>
+    
+    <!-- Footer -->
+    <Label fx:id="footerLabel" 
+           text="© 2025 Municipalidad de Pérez Zeledón. Todos los derechos reservados."
+           styleClass="text-caption, text-muted">
+        <padding>
+            <Insets bottom="16"/>
+        </padding>
+    </Label>
+    
+</VBox>

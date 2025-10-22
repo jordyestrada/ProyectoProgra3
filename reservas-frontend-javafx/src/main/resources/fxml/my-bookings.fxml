@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+  Mis Reservas
+  Sistema de Reservas - Municipalidad de Pérez Zeledón
+  
+  Estructura:
+  - BorderPane con Navbar y Sidebar
+  - Centro: VBox con header, filtros toggle y lista de reservas
+-->
+
+<BorderPane fx:id="rootPane" prefWidth="1440.0" prefHeight="900.0" 
+            styleClass="border-pane-root"
+            stylesheets="@../styles.css"
+            xmlns="http://javafx.com/javafx/21" 
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="cr.una.reservas.frontend.ui.MisReservasController">
+    
+    <!-- NAVBAR -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16.0" prefHeight="72.0" styleClass="navbar">
+            <ImageView fitHeight="40.0" preserveRatio="true">
+                <!-- Logo aquí -->
+            </ImageView>
+            <Label text="Sistema de Reservas" styleClass="navbar-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="🔔" styleClass="button-icon"/>
+            <Label text="Usuario" styleClass="navbar-user"/>
+        </HBox>
+    </top>
+    
+    <!-- SIDEBAR -->
+    <left>
+        <VBox spacing="8.0" prefWidth="280.0" styleClass="sidebar">
+            <!-- User Info -->
+            <VBox alignment="CENTER" spacing="8.0" styleClass="sidebar-user-info">
+                <ImageView fitWidth="64.0" fitHeight="64.0" preserveRatio="true" styleClass="sidebar-avatar"/>
+                <Label text="Usuario" styleClass="sidebar-username"/>
+                <Label text="Cliente" styleClass="sidebar-role"/>
+            </VBox>
+            <Separator styleClass="separator"/>
+            
+            <!-- Menu Items -->
+            <Button text="Dashboard" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="Espacios" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="Mis Reservas" styleClass="menu-item, menu-item-active" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="Calendario" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="Configuración" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+        </VBox>
+    </left>
+    
+    <!-- CONTENT -->
+    <center>
+        <VBox spacing="24.0" styleClass="content-container">
+            <padding>
+                <Insets top="32" right="32" bottom="32" left="32"/>
+            </padding>
+            
+            <!-- Header -->
+            <HBox alignment="CENTER_LEFT" spacing="16.0">
+                <Label text="Mis Reservas" styleClass="text-h2"/>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <!-- Botón Exportar -->
+                <Button fx:id="exportarBtn" text="📥 Exportar" 
+                        onAction="#handleExportar"
+                        styleClass="button-secondary"/>
+            </HBox>
+            
+            <!-- Filtros Toggle -->
+            <HBox spacing="12.0" prefHeight="48.0" alignment="CENTER_LEFT">
+                <fx:define>
+                    <ToggleGroup fx:id="filterGroup"/>
+                </fx:define>
+                
+                <ToggleButton fx:id="todasToggle" text="Todas" 
+                              toggleGroup="$filterGroup" selected="true"
+                              onAction="#handleFilterChange"
+                              prefHeight="40.0"
+                              styleClass="toggle-button, toggle-button-primary"/>
+                
+                <ToggleButton fx:id="activasToggle" text="Activas" 
+                              toggleGroup="$filterGroup"
+                              onAction="#handleFilterChange"
+                              prefHeight="40.0"
+                              styleClass="toggle-button, toggle-button-primary"/>
+                
+                <ToggleButton fx:id="completadasToggle" text="Completadas" 
+                              toggleGroup="$filterGroup"
+                              onAction="#handleFilterChange"
+                              prefHeight="40.0"
+                              styleClass="toggle-button, toggle-button-primary"/>
+                
+                <ToggleButton fx:id="canceladasToggle" text="Canceladas" 
+                              toggleGroup="$filterGroup"
+                              onAction="#handleFilterChange"
+                              prefHeight="40.0"
+                              styleClass="toggle-button, toggle-button-primary"/>
+            </HBox>
+            
+            <!-- Lista de Reservas -->
+            <ScrollPane fitToWidth="true" styleClass="scroll-pane-transparent">
+                <VBox.vgrow>ALWAYS</VBox.vgrow>
+                
+                <VBox fx:id="reservasListContainer" spacing="16.0">
+                    <!-- Las reservas se agregarán dinámicamente -->
+                    
+                    <!-- EJEMPLO DE RESERVA CARD (Template para referencia) -->
+                    <!-- 
+                    <HBox spacing="20.0" prefHeight="120.0" alignment="CENTER_LEFT" styleClass="card"
+                          style="-fx-background-color: white; -fx-background-radius: 12px; -fx-border-color: #e2e8f0; -fx-border-width: 1px; -fx-border-radius: 12px; -fx-padding: 20px;">
+                        
+                        <VBox spacing="8.0" HBox.hgrow="ALWAYS" prefWidth="50.0">
+                            <Label text="Salón de Eventos Municipal" 
+                                   style="-fx-font-family: 'Inter'; -fx-font-size: 18px; -fx-font-weight: 600; -fx-text-fill: #0f172a;">
+                            </Label>
+                            
+                            <HBox spacing="16.0">
+                                <Label text="📅 25 de Octubre, 2025" 
+                                       style="-fx-font-family: 'Inter'; -fx-font-size: 14px; -fx-text-fill: #64748b;">
+                                </Label>
+                                <Label text="🕐 14:00 - 18:00" 
+                                       style="-fx-font-family: 'Inter'; -fx-font-size: 14px; -fx-text-fill: #64748b;">
+                                </Label>
+                            </HBox>
+                            
+                            <Label text="Propósito: Reunión comunitaria" 
+                                   style="-fx-font-family: 'Inter'; -fx-font-size: 13px; -fx-text-fill: #94a3b8;">
+                            </Label>
+                        </VBox>
+                        
+                        <VBox spacing="4.0" alignment="CENTER" prefWidth="20.0">
+                            <Label text="Confirmada" styleClass="badge-success"
+                                   style="-fx-background-color: #d1fae5; -fx-text-fill: #065f46; -fx-background-radius: 9999px; -fx-padding: 4px 12px; -fx-font-size: 12px; -fx-font-weight: 600;">
+                            </Label>
+                        </VBox>
+                        
+                        <VBox alignment="CENTER" prefWidth="15.0">
+                            <ImageView fitWidth="80.0" fitHeight="80.0" preserveRatio="true"
+                                       style="-fx-border-color: #e2e8f0; -fx-border-width: 2px; -fx-border-radius: 8px; -fx-cursor: hand;">
+                            </ImageView>
+                            <Label text="QR Code" 
+                                   style="-fx-font-family: 'Inter'; -fx-font-size: 10px; -fx-text-fill: #94a3b8;">
+                            </Label>
+                        </VBox>
+                        
+                        <HBox spacing="8.0" alignment="CENTER" prefWidth="15.0">
+                            <Button text="👁️" 
+                                    prefWidth="40.0" prefHeight="40.0"
+                                    style="-fx-background-color: #f1f5f9; -fx-background-radius: 8px; -fx-font-size: 16px; -fx-cursor: hand;">
+                            </Button>
+                            
+                            <Button text="❌" 
+                                    prefWidth="40.0" prefHeight="40.0"
+                                    style="-fx-background-color: #fee2e2; -fx-background-radius: 8px; -fx-font-size: 16px; -fx-cursor: hand;">
+                            </Button>
+                            
+                            <MenuButton text="⋮" 
+                                        prefWidth="40.0" prefHeight="40.0"
+                                        style="-fx-background-color: #f1f5f9; -fx-background-radius: 8px; -fx-font-size: 16px;">
+                                <items>
+                                    <MenuItem text="Descargar QR"/>
+                                    <MenuItem text="Compartir"/>
+                                    <MenuItem text="Editar"/>
+                                </items>
+                            </MenuButton>
+                        </HBox>
+                    </HBox>
+                    -->
+                    
+                </VBox>
+            </ScrollPane>
+            
+            <!-- Empty State -->
+            <VBox fx:id="emptyState" alignment="CENTER" spacing="16.0" prefHeight="400.0" 
+                  visible="false" managed="false"
+                  styleClass="empty-state">
+                <Label text="📋" styleClass="empty-state-icon"/>
+                <Label text="No tienes reservas" styleClass="empty-state-title"/>
+                <Label text="Comienza explorando los espacios disponibles" styleClass="empty-state-text"/>
+                <Button text="Ver Espacios →" 
+                        onAction="#handleVerEspacios"
+                        styleClass="button-primary"/>
+            </VBox>
+        </VBox>
+    </center>
+    
+</BorderPane>

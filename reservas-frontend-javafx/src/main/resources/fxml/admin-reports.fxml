@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+
+  Panel Admin - Reportes y Estadísticas
+  Sistema de Reservas - Municipalidad de Pérez Zeledón
+  
+  Estructura:
+  - BorderPane con Navbar y Sidebar
+  - Centro: ScrollPane con filtros de fecha, KPIs, gráficos y tabla
+-->
+
+<BorderPane fx:id="rootPane" prefWidth="1440.0" prefHeight="900.0" 
+            styleClass="border-pane-root"
+            stylesheets="@../styles.css"
+            xmlns="http://javafx.com/javafx/21" 
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="cr.una.reservas.frontend.ui.admin.AdminReportesController">
+    
+    
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16.0" prefHeight="72.0" styleClass="navbar">
+            <ImageView fitHeight="40.0" preserveRatio="true">
+                
+            </ImageView>
+            <Label text="Sistema de Reservas - Admin" styleClass="navbar-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="🔔" styleClass="button-icon"/>
+            <Label text="Admin" styleClass="navbar-user"/>
+        </HBox>
+    </top>
+    
+    
+    <left>
+        <VBox spacing="8.0" prefWidth="280.0" styleClass="sidebar">
+            
+            <VBox alignment="CENTER" spacing="8.0" styleClass="sidebar-user-info">
+                <ImageView fitWidth="64.0" fitHeight="64.0" preserveRatio="true" styleClass="sidebar-avatar"/>
+                <Label text="Administrador" styleClass="sidebar-username"/>
+                <Label text="Admin" styleClass="sidebar-role"/>
+            </VBox>
+            <Separator/>
+            
+            
+            <Button text="📊 Dashboard" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="🏢 Gestión Espacios" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="📅 Reservas" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="📊 Reportes" styleClass="menu-item, menu-item-active" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="👥 Usuarios" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="⚙️ Configuración" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+        </VBox>
+    </left>
+    
+    
+    <center>
+        <ScrollPane fitToWidth="true" styleClass="content-area">
+            <VBox spacing="32.0" styleClass="content-container">
+                <padding>
+                    <Insets top="32" right="32" bottom="32" left="32"/>
+                </padding>
+                
+                
+                <HBox alignment="CENTER_LEFT" spacing="16.0">
+                    <Label text="Reportes y Estadísticas" styleClass="text-h2"/>
+                    
+                    <Region HBox.hgrow="ALWAYS"/>
+                    
+                    <Button fx:id="exportarBtn" text="📥 Exportar Reporte" 
+                            onAction="#handleExportar"
+                            styleClass="button-primary"/>
+                </HBox>
+                
+                
+                <HBox spacing="16.0" prefHeight="56.0" alignment="CENTER_LEFT">
+                    <Label text="Rango de fechas:" styleClass="text-body-sm, label-bold"/>
+                    
+                    <DatePicker fx:id="fechaInicioPicker" promptText="Fecha inicio" 
+                                prefWidth="200.0" prefHeight="48.0"
+                                styleClass="date-picker"/>
+                    
+                    <Label text="—" styleClass="text-body, text-muted"/>
+                    
+                    <DatePicker fx:id="fechaFinPicker" promptText="Fecha fin" 
+                                prefWidth="200.0" prefHeight="48.0"
+                                styleClass="date-picker"/>
+                    
+                    <Button fx:id="aplicarFiltroBtn" text="Aplicar" 
+                            onAction="#handleAplicarFiltro"
+                            styleClass="button-secondary"
+                            prefHeight="48.0"/>
+                </HBox>
+                
+                
+                <GridPane hgap="24.0" vgap="24.0">
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="25.0"/>
+                        <ColumnConstraints percentWidth="25.0"/>
+                        <ColumnConstraints percentWidth="25.0"/>
+                        <ColumnConstraints percentWidth="25.0"/>
+                    </columnConstraints>
+                    
+                    
+                    <VBox spacing="8.0" prefHeight="160.0" GridPane.columnIndex="0"
+                          styleClass="stat-card, stat-card-navy">
+                        <Label text="Total Reservas" styleClass="stat-label"/>
+                        <Label fx:id="totalReservasLabel" text="1,247" styleClass="stat-value"/>
+                        <HBox spacing="8.0" alignment="CENTER_LEFT">
+                            <Label text="↑" styleClass="stat-change-icon"/>
+                            <Label fx:id="totalReservasChangeLabel" text="12.5% vs mes anterior" 
+                                   styleClass="stat-change-positive"/>
+                        </HBox>
+                    </VBox>
+                    
+                    
+                    <VBox spacing="8.0" prefHeight="160.0" GridPane.columnIndex="1"
+                          styleClass="stat-card, stat-card-blue">
+                        <Label text="Tasa de Ocupación" styleClass="stat-label"/>
+                        <Label fx:id="tasaOcupacionLabel" text="78%" styleClass="stat-value"/>
+                        <HBox spacing="8.0" alignment="CENTER_LEFT">
+                            <Label text="↑" styleClass="stat-change-icon"/>
+                            <Label fx:id="tasaOcupacionChangeLabel" text="5.2% vs mes anterior" 
+                                   styleClass="stat-change-positive"/>
+                        </HBox>
+                    </VBox>
+                    
+                    
+                    <VBox spacing="8.0" prefHeight="160.0" GridPane.columnIndex="2"
+                          styleClass="stat-card, stat-card-success">
+                        <Label text="Ingresos Totales" styleClass="stat-label"/>
+                        <Label fx:id="ingresosLabel" text="₡2.4M" styleClass="stat-value"/>
+                        <HBox spacing="8.0" alignment="CENTER_LEFT">
+                            <Label text="↑" styleClass="stat-change-icon"/>
+                            <Label fx:id="ingresosChangeLabel" text="18.3% vs mes anterior" 
+                                   styleClass="stat-change-light"/>
+                        </HBox>
+                    </VBox>
+                    
+                    
+                    <VBox spacing="8.0" prefHeight="160.0" GridPane.columnIndex="3"
+                          styleClass="stat-card, stat-card-gold">
+                        <Label text="Satisfacción Promedio" styleClass="stat-label"/>
+                        <Label fx:id="satisfaccionLabel" text="4.7" styleClass="stat-value"/>
+                        <HBox spacing="8.0" alignment="CENTER_LEFT">
+                            <Label text="⭐" styleClass="stat-change-icon"/>
+                            <Label fx:id="satisfaccionChangeLabel" text="de 5.0 estrellas" 
+                                   styleClass="stat-change-light"/>
+                        </HBox>
+                    </VBox>
+                </GridPane>
+                
+                
+                <VBox spacing="24.0" styleClass="card">
+                    <Label text="Reservas por Mes" styleClass="text-h5"/>
+                    
+                    <BarChart fx:id="reservasPorMesChart" prefHeight="400.0" legendVisible="false" styleClass="chart">
+                        <xAxis>
+                            <CategoryAxis label="Mes"/>
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis label="Número de Reservas"/>
+                        </yAxis>
+                    </BarChart>
+                </VBox>
+                
+                
+                <VBox spacing="24.0" styleClass="card">
+                    <Label text="Espacios Más Populares" styleClass="text-h5"/>
+                    
+                    <PieChart fx:id="espaciosPopularesChart" prefHeight="400.0" legendSide="RIGHT" styleClass="chart"/>
+                </VBox>
+                
+                
+                <VBox spacing="24.0" styleClass="card">
+                    <Label text="Últimas Reservas" styleClass="text-h5"/>
+                    
+                    <TableView fx:id="ultimasReservasTable" maxHeight="500.0" styleClass="table-view">
+                        <columns>
+                            <TableColumn fx:id="fechaColumn" text="Fecha" prefWidth="120.0"/>
+                            <TableColumn fx:id="espacioColumn" text="Espacio" prefWidth="200.0"/>
+                            <TableColumn fx:id="clienteColumn" text="Cliente" prefWidth="180.0"/>
+                            <TableColumn fx:id="horarioColumn" text="Horario" prefWidth="150.0"/>
+                            <TableColumn fx:id="estadoReservaColumn" text="Estado" prefWidth="120.0" 
+                                         styleClass="table-column-center"/>
+                            <TableColumn fx:id="montoColumn" text="Monto" prefWidth="100.0" 
+                                         styleClass="table-column-right"/>
+                        </columns>
+                    </TableView>
+                </VBox>
+            </VBox>
+        </ScrollPane>
+    </center>
+    
+</BorderPane>

@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+  Panel Admin - Gestión de Espacios
+  Sistema de Reservas - Municipalidad de Pérez Zeledón
+  
+  Estructura:
+  - BorderPane con Navbar y Sidebar
+  - Centro: VBox con header, toolbar y TableView de espacios
+  Todas las etiquetas VBox están correctamente cerradas
+-->
+
+<BorderPane fx:id="rootPane" prefWidth="1440.0" prefHeight="900.0" 
+            styleClass="border-pane-root"
+            stylesheets="@../styles.css"
+            xmlns="http://javafx.com/javafx/21" 
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="cr.una.reservas.frontend.ui.admin.AdminEspaciosController">
+    
+    <!-- NAVBAR -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16.0" prefHeight="72.0" styleClass="navbar">
+            <ImageView fitHeight="40.0" preserveRatio="true">
+                <!-- Logo aquí -->
+            </ImageView>
+            <Label text="Sistema de Reservas - Admin" styleClass="navbar-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="🔔" styleClass="button-icon"/>
+            <Label text="Admin" styleClass="navbar-user"/>
+        </HBox>
+    </top>
+    
+    <!-- SIDEBAR -->
+    <left>
+        <VBox spacing="8.0" prefWidth="280.0" styleClass="sidebar">
+            <!-- User Info -->
+            <VBox alignment="CENTER" spacing="8.0" styleClass="sidebar-user-info">
+                <ImageView fitWidth="64.0" fitHeight="64.0" preserveRatio="true" styleClass="sidebar-avatar"/>
+                <Label text="Administrador" styleClass="sidebar-username"/>
+                <Label text="Admin" styleClass="sidebar-role"/>
+            </VBox>
+            <Separator/>
+            
+            <!-- Menu Items -->
+            <Button text="📊 Dashboard" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="🏢 Gestión Espacios" styleClass="menu-item, menu-item-active" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="📅 Reservas" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="📊 Reportes" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="👥 Usuarios" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Button text="⚙️ Configuración" styleClass="menu-item" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+        </VBox>
+    </left>
+    
+    <!-- CONTENT -->
+    <center>
+        <VBox spacing="24.0" styleClass="content-container">
+            <padding>
+                <Insets top="32" right="32" bottom="32" left="32"/>
+            </padding>
+            
+            <!-- Header -->
+            <HBox alignment="CENTER_LEFT" spacing="16.0">
+                <Label text="Gestión de Espacios" styleClass="text-h2"/>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <!-- Botón Nuevo Espacio -->
+                <Button fx:id="nuevoEspacioBtn" text="➕ Nuevo Espacio" 
+                        onAction="#handleNuevoEspacio"
+                        styleClass="button-primary"
+                        prefHeight="48.0"/>
+            </HBox>
+            
+            <!-- Toolbar: Búsqueda y Filtros -->
+            <HBox spacing="16.0" prefHeight="56.0" alignment="CENTER_LEFT">
+                <!-- Campo de Búsqueda -->
+                <TextField fx:id="searchField" promptText="🔍 Buscar espacios..." 
+                           prefWidth="400.0" prefHeight="48.0"
+                           onKeyReleased="#handleSearch"
+                           styleClass="text-input"/>
+                
+                <!-- Filtro por Tipo -->
+                <ComboBox fx:id="filtroTipoCombo" promptText="Tipo de Espacio" 
+                          prefWidth="180.0" prefHeight="48.0"
+                          onAction="#handleFilter"
+                          styleClass="combo-box"/>
+                
+                <!-- Filtro por Estado -->
+                <ComboBox fx:id="filtroEstadoCombo" promptText="Estado" 
+                          prefWidth="150.0" prefHeight="48.0"
+                          onAction="#handleFilter"
+                          styleClass="combo-box"/>
+            </HBox>
+            
+            <!-- TableView de Espacios -->
+            <TableView fx:id="espaciosTable" styleClass="table-view">
+                <VBox.vgrow>ALWAYS</VBox.vgrow>
+                
+                <columns>
+                    <!-- Columna Imagen -->
+                    <TableColumn fx:id="imagenColumn" text="Imagen" prefWidth="100.0" 
+                                 styleClass="table-column-center"/>
+                    
+                    <!-- Columna Nombre -->
+                    <TableColumn fx:id="nombreColumn" text="Nombre" prefWidth="250.0"/>
+                    
+                    <!-- Columna Tipo -->
+                    <TableColumn fx:id="tipoColumn" text="Tipo" prefWidth="150.0"/>
+                    
+                    <!-- Columna Capacidad -->
+                    <TableColumn fx:id="capacidadColumn" text="Capacidad" prefWidth="120.0" 
+                                 styleClass="table-column-center"/>
+                    
+                    <!-- Columna Estado -->
+                    <TableColumn fx:id="estadoColumn" text="Estado" prefWidth="120.0" 
+                                 styleClass="table-column-center"/>
+                    
+                    <!-- Columna Reservas -->
+                    <TableColumn fx:id="reservasColumn" text="Reservas" prefWidth="120.0" 
+                                 styleClass="table-column-center"/>
+                    
+                    <!-- Columna Acciones -->
+                    <TableColumn fx:id="accionesColumn" text="Acciones" prefWidth="150.0" 
+                                 styleClass="table-column-center"/>
+                </columns>
+                
+                <!-- Placeholder cuando no hay datos -->
+                <placeholder>
+                    <VBox alignment="CENTER" spacing="16.0" styleClass="empty-state">
+                        <Label text="📋" styleClass="empty-state-icon"/>
+                        <Label text="No hay espacios registrados" styleClass="empty-state-title"/>
+                        <Label text="Haz clic en 'Nuevo Espacio' para agregar uno" styleClass="empty-state-description"/>
+                    </VBox>
+                </placeholder>
+            </TableView>
+            
+            <!-- Footer con información de paginación -->
+            <HBox alignment="CENTER_LEFT" spacing="16.0">
+                <Label fx:id="totalEspaciosLabel" text="Total: 0 espacios" styleClass="text-body-sm, text-muted"/>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <!-- Controles de paginación (opcional) -->
+                <Button fx:id="prevPageBtn" text="← Anterior" 
+                        onAction="#handlePreviousPage"
+                        styleClass="button-secondary"
+                        disable="true"/>
+                
+                <Label fx:id="pageLabel" text="Página 1 de 1" styleClass="text-body-sm, text-muted"/>
+                
+                <Button fx:id="nextPageBtn" text="Siguiente →" 
+                        onAction="#handleNextPage"
+                        styleClass="button-secondary"
+                        disable="true"/>
+            </HBox>
+        </VBox>
+    </center>
+    
+</BorderPane>
