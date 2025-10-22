@@ -1,6 +1,7 @@
 package cr.una.reservas.frontend.ui.login;
 
 import cr.una.reservas.frontend.ui.main.MainView;
+import cr.una.reservas.frontend.ui.test.TestViewLoader;
 import cr.una.reservas.frontend.viewmodel.LoginViewModel;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -61,6 +62,12 @@ public class LoginView {
         loginButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 14px;");
         loginButton.setOnAction(e -> viewModel.login());
         
+        // Test FXML button
+        Button testFxmlButton = new Button("🔧 Probar FXML + SceneBuilder");
+        testFxmlButton.setMaxWidth(300);
+        testFxmlButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 12px;");
+        testFxmlButton.setOnAction(e -> openTestView());
+        
         // Progress indicator
         progressIndicator = new ProgressIndicator();
         progressIndicator.setMaxSize(30, 30);
@@ -76,6 +83,10 @@ public class LoginView {
         // Enter key support
         passwordField.setOnAction(e -> viewModel.login());
         
+        // Separator
+        Separator separator = new Separator();
+        separator.setMaxWidth(300);
+        
         root.getChildren().addAll(
             titleLabel,
             subtitleLabel,
@@ -85,7 +96,9 @@ public class LoginView {
             passwordField,
             loginButton,
             progressIndicator,
-            errorLabel
+            errorLabel,
+            separator,
+            testFxmlButton
         );
     }
     
@@ -131,6 +144,24 @@ public class LoginView {
         } catch (Exception e) {
             errorLabel.setText("Error al abrir ventana principal: " + e.getMessage());
             errorLabel.setVisible(true);
+        }
+    }
+    
+    private void openTestView() {
+        try {
+            Parent testView = TestViewLoader.load();
+            Scene scene = new Scene(testView, 500, 400);
+            
+            Stage stage = (Stage) root.getScene().getWindow();
+            stage.setScene(scene);
+            stage.setTitle("Prueba FXML + SceneBuilder");
+            
+            System.out.println("✅ Vista de prueba FXML cargada exitosamente");
+            
+        } catch (Exception e) {
+            errorLabel.setText("Error al cargar FXML: " + e.getMessage());
+            errorLabel.setVisible(true);
+            e.printStackTrace();
         }
     }
     
