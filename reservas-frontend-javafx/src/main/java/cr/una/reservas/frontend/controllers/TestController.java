@@ -1,12 +1,10 @@
-package cr.una.reservas.frontend.ui.test;
+package cr.una.reservas.frontend.controllers;
 
 import javafx.fxml.FXML;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.stage.Stage;
-import cr.una.reservas.frontend.ui.login.LoginView;
+import cr.una.reservas.frontend.util.FlowController;
 
 /**
  * Controller de prueba para verificar FXML + SceneBuilder
@@ -63,11 +61,8 @@ public class TestController {
     @FXML
     private void handleBack() {
         try {
-            Stage stage = (Stage) backButton.getScene().getWindow();
-            LoginView loginView = new LoginView();
-            Scene scene = new Scene(loginView.getView(), 400, 500);
-            stage.setScene(scene);
-            System.out.println("← Volviendo a LoginView");
+            System.out.println("← Volviendo a Login");
+            FlowController.getInstance().goLogin();
         } catch (Exception e) {
             System.err.println("Error al volver: " + e.getMessage());
             e.printStackTrace();

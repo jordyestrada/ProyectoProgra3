@@ -27,9 +27,7 @@
       stylesheets="@../styles.css"
       xmlns="http://javafx.com/javafx/21" 
       xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="cr.una.reservas.frontend.ui.login.LoginController">
-    
-    <padding>
+            fx:controller="cr.una.reservas.frontend.controllers.LoginController">    <padding>
         <Insets top="48" right="48" bottom="48" left="48"/>
     </padding>
     

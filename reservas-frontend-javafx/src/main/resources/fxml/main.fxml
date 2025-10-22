@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.RowConstraints?>
+
+<!--
+  Vista Principal Unificada (Main)
+  Sistema de Reservas - Municipalidad de Pérez Zeledón
+  
+  Contiene:
+  - Dashboard (vboxDashboard)
+  - Catálogo de Espacios (vboxSpacesCatalog)
+  - Mis Reservas (vboxMyBookings)
+  
+  Se controlan con visible="true/false" desde MainController
+-->
+
+<BorderPane fx:id="rootPane" prefWidth="1440.0" prefHeight="900.0" 
+            styleClass="border-pane-root"
+            stylesheets="@../styles.css"
+            xmlns="http://javafx.com/javafx/21" 
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="cr.una.reservas.frontend.controllers.MainController">
+    
+    <!-- ============================================
+         NAVBAR - Compartido por todas las vistas
+         ============================================ -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16.0" prefHeight="72.0" styleClass="navbar">
+            
+            <!-- Logo -->
+            <ImageView fx:id="navbarLogo" fitHeight="40.0" preserveRatio="true"/>
+            
+            <!-- Título -->
+            <Label text="Sistema de Reservas" styleClass="navbar-title"/>
+            
+            <!-- Spacer -->
+            <Region HBox.hgrow="ALWAYS"/>
+            
+            <!-- Botón Notificaciones -->
+            <Button fx:id="notificationsButton" text="🔔" styleClass="button-icon"/>
+            
+            <!-- Menú Usuario -->
+            <MenuButton fx:id="userMenuButton" text="Usuario" styleClass="menu-button-user">
+                <items>
+                    <MenuItem text="Mi Perfil" onAction="#handleProfile"/>
+                    <MenuItem text="Configuración" onAction="#handleSettings"/>
+                    <MenuItem text="Cerrar Sesión" onAction="#handleLogout"/>
+                </items>
+            </MenuButton>
+            
+            <padding>
+                <Insets left="24.0" right="24.0"/>
+            </padding>
+        </HBox>
+    </top>
+    
+    <!-- ============================================
+         SIDEBAR - Compartido por todas las vistas
+         ============================================ -->
+    <left>
+        <VBox spacing="8.0" prefWidth="280.0" styleClass="sidebar">
+            
+            <!-- User Info -->
+            <VBox alignment="CENTER" spacing="8.0" styleClass="sidebar-user-info">
+                <ImageView fx:id="userAvatar" fitHeight="80.0" fitWidth="80.0" 
+                          styleClass="user-avatar" preserveRatio="true"/>
+                <Label fx:id="userNameLabel" text="Nombre Usuario" 
+                      styleClass="sidebar-username"/>
+                <Label fx:id="userRoleLabel" text="Ciudadano" 
+                      styleClass="sidebar-user-role"/>
+            </VBox>
+            
+            <Separator/>
+            
+            <!-- Navigation Buttons -->
+            <VBox spacing="4.0" styleClass="sidebar-menu" VBox.vgrow="ALWAYS">
+                <Button fx:id="dashboardNavButton" text="🏠  Dashboard" 
+                       styleClass="sidebar-button, sidebar-button-active"
+                       onAction="#showDashboard" maxWidth="Infinity"/>
+                
+                <Button fx:id="espaciosNavButton" text="🏛️  Espacios" 
+                       styleClass="sidebar-button"
+                       onAction="#showSpacesCatalog" maxWidth="Infinity"/>
+                
+                <Button fx:id="reservasNavButton" text="📅  Mis Reservas" 
+                       styleClass="sidebar-button"
+                       onAction="#showMyBookings" maxWidth="Infinity"/>
+                
+                <Separator/>
+                
+                <!-- Admin Section (visible solo para admin) -->
+                <VBox fx:id="adminSection" spacing="4.0" visible="false" managed="false">
+                    <Label text="Administración" styleClass="sidebar-section-title"/>
+                    
+                    <Button text="🔧  Gestión Espacios" 
+                           styleClass="sidebar-button"
+                           onAction="#showAdminSpaces" maxWidth="Infinity"/>
+                    
+                    <Button text="📊  Reportes" 
+                           styleClass="sidebar-button"
+                           onAction="#showAdminReports" maxWidth="Infinity"/>
+                </VBox>
+                
+                <Region VBox.vgrow="ALWAYS"/>
+                
+                <Separator/>
+                
+                <Button text="❓  Ayuda" styleClass="sidebar-button" maxWidth="Infinity"/>
+                <Button text="⚙️  Configuración" styleClass="sidebar-button" maxWidth="Infinity"/>
+            </VBox>
+            
+            <padding>
+                <Insets top="24.0" bottom="24.0" left="16.0" right="16.0"/>
+            </padding>
+        </VBox>
+    </left>
+    
+    <!-- ============================================
+         CONTENIDO CENTRAL - StackPane con 3 vistas
+         ============================================ -->
+    <center>
+        <StackPane>
+            
+            <!-- ============================================
+                 VISTA 1: DASHBOARD
+                 ============================================ -->
+            <VBox fx:id="vboxDashboard" spacing="0" visible="true" styleClass="content-area">
+                <ScrollPane fitToWidth="true" styleClass="scroll-pane-content" VBox.vgrow="ALWAYS">
+                    <VBox spacing="32.0">
+                        
+                        <!-- Header -->
+                        <VBox spacing="8.0">
+                            <Label text="¡Bienvenido de vuelta!" styleClass="text-h2"/>
+                            <Label fx:id="currentDateLabel" text="Lunes, 21 de Octubre 2025" styleClass="text-body, text-muted"/>
+                        </VBox>
+                        
+                        <!-- Stats Cards -->
+                        <GridPane hgap="24.0" vgap="24.0">
+                            <columnConstraints>
+                                <ColumnConstraints percentWidth="25.0"/>
+                                <ColumnConstraints percentWidth="25.0"/>
+                                <ColumnConstraints percentWidth="25.0"/>
+                                <ColumnConstraints percentWidth="25.0"/>
+                            </columnConstraints>
+                            
+                            <!-- Card 1: Reservas Activas -->
+                            <VBox spacing="8.0" styleClass="stat-card, stat-card-navy" GridPane.columnIndex="0" alignment="CENTER">
+                                <Label text="Total Reservas" styleClass="stat-label"/>
+                                <Label fx:id="activeBookingsCount" text="156" styleClass="stat-value"/>
+                            </VBox>
+                            
+                            <!-- Card 2: Próxima Reserva -->
+                            <VBox spacing="8.0" styleClass="stat-card, stat-card-navy" GridPane.columnIndex="1" alignment="CENTER">
+                                <Label text="Activas" styleClass="stat-label"/>
+                                <Label fx:id="nextBookingDate" text="23" styleClass="stat-value"/>
+                            </VBox>
+                            
+                            <!-- Card 3: Espacios Disponibles -->
+                            <VBox spacing="8.0" styleClass="stat-card, stat-card-navy" GridPane.columnIndex="2" alignment="CENTER">
+                                <Label text="Completadas" styleClass="stat-label"/>
+                                <Label fx:id="availableSpacesCount" text="128" styleClass="stat-value"/>
+                            </VBox>
+                            
+                            <!-- Card 4: Historial -->
+                            <VBox spacing="8.0" styleClass="stat-card, stat-card-navy" GridPane.columnIndex="3" alignment="CENTER">
+                                <Label text="Espacios Disponibles" styleClass="stat-label"/>
+                                <Label fx:id="totalBookingsCount" text="42" styleClass="stat-value"/>
+                            </VBox>
+                        </GridPane>
+                        
+                        <!-- Próximas Reservas Section -->
+                        <VBox spacing="24.0">
+                            <!-- Header -->
+                            <HBox alignment="CENTER_LEFT" spacing="16.0">
+                                <Label text="Próximas Reservas" styleClass="text-h4"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Button text="Ver todas →" styleClass="button-link" 
+                                       onAction="#showMyBookings"/>
+                            </HBox>
+                            
+                            <!-- Reservas List -->
+                            <VBox fx:id="upcomingBookingsList" spacing="16.0">
+                                <!-- Se llena dinámicamente -->
+                                <HBox alignment="CENTER_LEFT" spacing="20.0" prefHeight="100.0" styleClass="card">
+                                    <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                                        <Label text="Salón de Eventos Municipal" styleClass="text-h5"/>
+                                        <Label text="📅 25 de Octubre, 2025 • 🕐 14:00 - 18:00" styleClass="text-body-sm, text-muted"/>
+                                    </VBox>
+                                    <Label text="Confirmada" styleClass="badge, badge-success"/>
+                                </HBox>
+                            </VBox>
+                        </VBox>
+                        
+                        <!-- Acciones Rápidas Section -->
+                        <VBox spacing="24.0">
+                            <Label text="Acciones Rápidas" styleClass="text-h4"/>
+                            
+                            <GridPane hgap="24.0" vgap="24.0">
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="33.33"/>
+                                    <ColumnConstraints percentWidth="33.33"/>
+                                    <ColumnConstraints percentWidth="33.33"/>
+                                </columnConstraints>
+                                
+                                <!-- Action 1: Nueva Reserva -->
+                                <VBox alignment="CENTER" spacing="12.0" GridPane.columnIndex="0" prefHeight="160.0"
+                                      styleClass="action-card" onMouseClicked="#showSpacesCatalog">
+                                    <Label text="➕" styleClass="action-icon"/>
+                                    <Label text="Nueva Reserva" styleClass="action-title"/>
+                                    <Label text="Reservar un espacio" styleClass="action-subtitle"/>
+                                </VBox>
+                                
+                                <!-- Action 2: Ver Espacios -->
+                                <VBox alignment="CENTER" spacing="12.0" GridPane.columnIndex="1" prefHeight="160.0"
+                                      styleClass="action-card" onMouseClicked="#showSpacesCatalog">
+                                    <Label text="🏛️" styleClass="action-icon"/>
+                                    <Label text="Ver Espacios" styleClass="action-title"/>
+                                    <Label text="Explorar espacios disponibles" styleClass="action-subtitle"/>
+                                </VBox>
+                                
+                                <!-- Action 3: Mis Reservas -->
+                                <VBox alignment="CENTER" spacing="12.0" GridPane.columnIndex="2" prefHeight="160.0"
+                                      styleClass="action-card" onMouseClicked="#showMyBookings">
+                                    <Label text="📅" styleClass="action-icon"/>
+                                    <Label text="Mis Reservas" styleClass="action-title"/>
+                                    <Label text="Ver mi historial" styleClass="action-subtitle"/>
+                                </VBox>
+                            </GridPane>
+                        </VBox>
+                        
+                        <padding>
+                            <Insets top="32.0" bottom="32.0" left="32.0" right="32.0"/>
+                        </padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+            
+            <!-- ============================================
+                 VISTA 2: CATÁLOGO DE ESPACIOS
+                 ============================================ -->
+            <VBox fx:id="vboxSpacesCatalog" spacing="0" visible="false" styleClass="content-area">
+                <ScrollPane fitToWidth="true" styleClass="scroll-pane-content" VBox.vgrow="ALWAYS">
+                    <VBox spacing="32.0">
+                        
+                        <!-- Header con Search -->
+                        <VBox spacing="16.0">
+                            <HBox alignment="CENTER_LEFT" spacing="16.0">
+                                <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                                    <Label text="Catálogo de Espacios" styleClass="text-h2"/>
+                                    <Label text="Descubre y reserva espacios municipales" styleClass="text-body, text-muted"/>
+                                </VBox>
+                                <Button fx:id="newSpaceButton" text="➕ Nuevo Espacio" 
+                                       styleClass="button-primary" 
+                                       onAction="#handleNuevoEspacio"
+                                       visible="false"/>
+                            </HBox>
+                            
+                            <!-- Search Bar -->
+                            <HBox spacing="12.0" alignment="CENTER_LEFT">
+                                <TextField fx:id="searchField" promptText="🔍 Buscar espacios..." 
+                                          styleClass="text-input" 
+                                          onKeyReleased="#handleSearch"
+                                          HBox.hgrow="ALWAYS"/>
+                                <Button text="Buscar" styleClass="button-primary" 
+                                       onAction="#handleSearch"/>
+                            </HBox>
+                            
+                            <!-- Filtros -->
+                            <HBox spacing="12.0" alignment="CENTER_LEFT">
+                                <Label text="Filtros:" styleClass="label-bold"/>
+                                <ComboBox fx:id="tipoComboBox" promptText="Tipo de Espacio" 
+                                         styleClass="combo-box"
+                                         onAction="#handleFilter"/>
+                                <ComboBox fx:id="capacidadComboBox" promptText="Capacidad" 
+                                         styleClass="combo-box"
+                                         onAction="#handleFilter"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Button text="Limpiar Filtros" styleClass="button-link" 
+                                       onAction="#handleClearFilters"/>
+                            </HBox>
+                        </VBox>
+                        
+                        <!-- Grid de Espacios -->
+                        <GridPane fx:id="spacesGrid" hgap="24.0" vgap="24.0">
+                            <columnConstraints>
+                                <ColumnConstraints percentWidth="33.33"/>
+                                <ColumnConstraints percentWidth="33.33"/>
+                                <ColumnConstraints percentWidth="33.33"/>
+                            </columnConstraints>
+                            <!-- Se llena dinámicamente -->
+                        </GridPane>
+                        
+                        <!-- Empty State -->
+                        <VBox fx:id="emptyStateSpaces" alignment="CENTER" spacing="16.0" 
+                             visible="false" managed="false"
+                             styleClass="empty-state">
+                            <Label text="📭" styleClass="empty-state-icon"/>
+                            <Label text="No se encontraron espacios" styleClass="empty-state-title"/>
+                            <Label text="Intenta ajustar los filtros de búsqueda" styleClass="empty-state-description"/>
+                        </VBox>
+                        
+                        <padding>
+                            <Insets top="32.0" bottom="32.0" left="32.0" right="32.0"/>
+                        </padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+            
+            <!-- ============================================
+                 VISTA 3: MIS RESERVAS
+                 ============================================ -->
+            <VBox fx:id="vboxMyBookings" spacing="0" visible="false" styleClass="content-area">
+                <ScrollPane fitToWidth="true" styleClass="scroll-pane-content" VBox.vgrow="ALWAYS">
+                    <VBox spacing="32.0">
+                        
+                        <!-- Header con Export -->
+                        <VBox spacing="16.0">
+                            <HBox alignment="CENTER_LEFT" spacing="16.0">
+                                <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                                    <Label text="Mis Reservas" styleClass="text-h2"/>
+                                    <Label text="Gestiona tus reservas activas e historial" styleClass="text-body, text-muted"/>
+                                </VBox>
+                                <Button text="📥 Exportar" styleClass="button-secondary" 
+                                       onAction="#handleExportar"/>
+                            </HBox>
+                            
+                            <!-- Filtros Toggle -->
+                            <HBox spacing="12.0" alignment="CENTER_LEFT">
+                                <Label text="Mostrar:" styleClass="label-bold"/>
+                                <fx:define>
+                                    <ToggleGroup fx:id="filterGroup"/>
+                                </fx:define>
+                                <ToggleButton fx:id="allFilter" text="Todas" 
+                                            toggleGroup="$filterGroup" selected="true"
+                                            styleClass="toggle-button"
+                                            onAction="#handleFilterChange"/>
+                                <ToggleButton fx:id="activeFilter" text="Activas" 
+                                            toggleGroup="$filterGroup"
+                                            styleClass="toggle-button"
+                                            onAction="#handleFilterChange"/>
+                                <ToggleButton fx:id="completedFilter" text="Completadas" 
+                                            toggleGroup="$filterGroup"
+                                            styleClass="toggle-button"
+                                            onAction="#handleFilterChange"/>
+                                <ToggleButton fx:id="cancelledFilter" text="Canceladas" 
+                                            toggleGroup="$filterGroup"
+                                            styleClass="toggle-button"
+                                            onAction="#handleFilterChange"/>
+                            </HBox>
+                        </VBox>
+                        
+                        <!-- Lista de Reservas -->
+                        <VBox fx:id="bookingsList" spacing="16.0">
+                            <!-- Se llena dinámicamente -->
+                        </VBox>
+                        
+                        <!-- Empty State -->
+                        <VBox fx:id="emptyStateBookings" alignment="CENTER" spacing="16.0" 
+                             visible="false" managed="false"
+                             styleClass="empty-state">
+                            <Label text="📭" styleClass="empty-state-icon"/>
+                            <Label text="No tienes reservas" styleClass="empty-state-title"/>
+                            <Label text="¡Comienza explorando nuestros espacios!" styleClass="empty-state-description"/>
+                            <Button text="Ver Espacios →" styleClass="button-primary" 
+                                   onAction="#handleVerEspacios"/>
+                        </VBox>
+                        
+                        <padding>
+                            <Insets top="32.0" bottom="32.0" left="32.0" right="32.0"/>
+                        </padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+            
+        </StackPane>
+    </center>
+    
+</BorderPane>

@@ -1,7 +1,7 @@
-package cr.una.reservas.frontend.ui.login;
+package cr.una.reservas.frontend.controllers;
 
 import cr.una.reservas.frontend.util.AlertHelper;
-import cr.una.reservas.frontend.util.NavigationManager;
+import cr.una.reservas.frontend.util.FlowController;
 import cr.una.reservas.frontend.util.SessionManager;
 import cr.una.reservas.frontend.domain.User;
 import javafx.application.Platform;
@@ -68,7 +68,7 @@ public class LoginController {
                 Platform.runLater(() -> {
                     showLoading(false);
                     System.out.println("✅ Login exitoso, navegando al dashboard...");
-                    NavigationManager.getInstance().navigateToDashboard();
+                    FlowController.getInstance().goMain();
                 });
                 
             } catch (Exception e) {

@@ -209,7 +209,7 @@
   -fx-font-size: 16px;
   -fx-font-weight: 600;
   -fx-padding: 12px 24px;
-  -fx-background-radius: -radius-md;
+  -fx-background-radius: 8px;
   -fx-cursor: hand;
   -fx-effect: dropshadow(gaussian, rgba(0, 102, 204, 0.3), 4, 0, 0, 2);
 }
@@ -225,12 +225,12 @@
   -fx-text-fill: -secondary-blue;
   -fx-border-color: -secondary-blue;
   -fx-border-width: 2px;
-  -fx-border-radius: -radius-md;
+  -fx-border-radius: 8px;
   -fx-font-family: "Inter";
   -fx-font-size: 16px;
   -fx-font-weight: 600;
   -fx-padding: 12px 24px;
-  -fx-background-radius: -radius-md;
+  -fx-background-radius: 8px;
   -fx-cursor: hand;
 }
 
@@ -241,7 +241,7 @@
 /* Botón de Icono */
 .button-icon {
   -fx-background-color: transparent;
-  -fx-background-radius: -radius-md;
+  -fx-background-radius: 8px;
   -fx-padding: 8px;
   -fx-cursor: hand;
 }
@@ -256,11 +256,11 @@
 
 .card {
   -fx-background-color: -bg-primary;
-  -fx-background-radius: -radius-lg;
+  -fx-background-radius: 12px;
   -fx-border-color: -border-color;
   -fx-border-width: 1px;
-  -fx-border-radius: -radius-lg;
-  -fx-padding: -spacing-lg;
+  -fx-border-radius: 12px;
+  -fx-padding: 24px;
   -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 4, 0, 0, 2);
 }
 
@@ -271,8 +271,8 @@
 
 .card-stat {
   -fx-background-color: linear-gradient(to bottom right, -primary-navy, -primary-navy-light);
-  -fx-background-radius: -radius-lg;
-  -fx-padding: -spacing-lg;
+  -fx-background-radius: 12px;
+  -fx-padding: 24px;
   -fx-effect: dropshadow(gaussian, rgba(0, 40, 85, 0.3), 8, 0, 0, 4);
 }
 
@@ -282,10 +282,10 @@
 
 .text-input {
   -fx-background-color: -bg-primary;
-  -fx-background-radius: -radius-md;
+  -fx-background-radius: 8px;
   -fx-border-color: -border-color;
   -fx-border-width: 1px;
-  -fx-border-radius: -radius-md;
+  -fx-border-radius: 8px;
   -fx-padding: 12px 16px;
   -fx-font-family: "Inter";
   -fx-font-size: 16px;
@@ -300,10 +300,10 @@
 
 .text-area {
   -fx-background-color: -bg-primary;
-  -fx-background-radius: -radius-md;
+  -fx-background-radius: 8px;
   -fx-border-color: -border-color;
   -fx-border-width: 1px;
-  -fx-border-radius: -radius-md;
+  -fx-border-radius: 8px;
   -fx-padding: 12px 16px;
   -fx-font-family: "Inter";
   -fx-font-size: 16px;
@@ -318,10 +318,10 @@
 /* ComboBox personalizado */
 .combo-box {
   -fx-background-color: -bg-primary;
-  -fx-background-radius: -radius-md;
+  -fx-background-radius: 8px;
   -fx-border-color: -border-color;
   -fx-border-width: 1px;
-  -fx-border-radius: -radius-md;
+  -fx-border-radius: 8px;
   -fx-padding: 12px 16px;
   -fx-font-family: "Inter";
   -fx-font-size: 16px;
@@ -335,10 +335,10 @@
 /* DatePicker personalizado */
 .date-picker {
   -fx-background-color: -bg-primary;
-  -fx-background-radius: -radius-md;
+  -fx-background-radius: 8px;
   -fx-border-color: -border-color;
   -fx-border-width: 1px;
-  -fx-border-radius: -radius-md;
+  -fx-border-radius: 8px;
 }
 
 .date-picker:focused {
@@ -434,7 +434,7 @@
 
 .navbar {
   -fx-background-color: -primary-navy;
-  -fx-padding: -spacing-md -spacing-xl;
+  -fx-padding: 16px 32px;
   -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 4, 0, 0, 2);
 }
 
@@ -456,7 +456,7 @@
   -fx-background-color: -bg-primary;
   -fx-border-color: -border-color;
   -fx-border-width: 0 1px 0 0;
-  -fx-padding: -spacing-lg;
+  -fx-padding: 24px;
 }
 
 .sidebar-user-info {
@@ -482,8 +482,8 @@
   -fx-font-family: "Inter";
   -fx-font-size: 15px;
   -fx-font-weight: 500;
-  -fx-padding: -spacing-md;
-  -fx-background-radius: -radius-md;
+  -fx-padding: 16px;
+  -fx-background-radius: 8px;
   -fx-cursor: hand;
 }
 
@@ -559,14 +559,14 @@
   -fx-font-family: "Inter";
   -fx-font-size: 14px;
   -fx-font-weight: 600;
-  -fx-padding: -spacing-md;
+  -fx-padding: 16px;
 }
 
 .table-view .table-cell {
   -fx-text-fill: -text-secondary;
   -fx-font-family: "Inter";
   -fx-font-size: 14px;
-  -fx-padding: -spacing-md;
+  -fx-padding: 16px;
 }
 
 .table-row-cell:hover {
@@ -636,7 +636,7 @@
 /* Login Card */
 .login-card {
   -fx-background-color: -bg-primary;
-  -fx-background-radius: -radius-lg;
+  -fx-background-radius: 12px;
   -fx-padding: 40px;
   -fx-max-width: 480px;
   -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 10, 0, 0, 4);
@@ -648,8 +648,8 @@
 
 /* Stat Cards con Gradiente */
 .stat-card {
-  -fx-background-radius: -radius-lg;
-  -fx-padding: -spacing-lg;
+  -fx-background-radius: 12px;
+  -fx-padding: 24px;
   -fx-effect: dropshadow(gaussian, rgba(0, 40, 85, 0.3), 10, 0, 0, 4);
   -fx-min-height: 140px;
 }
@@ -792,8 +792,8 @@
 
 .empty-state {
   -fx-alignment: center;
-  -fx-padding: -spacing-3xl;
-  -fx-spacing: -spacing-md;
+  -fx-padding: 64px;
+  -fx-spacing: 16px;
 }
 
 .empty-state-icon {
@@ -821,7 +821,7 @@
 
 .chart {
   -fx-background-color: -bg-primary;
-  -fx-padding: -spacing-lg;
+  -fx-padding: 24px;
 }
 
 /* ============================================
@@ -890,16 +890,13 @@
   -fx-underline: true;
 }
 
-/* ============================================
-   ACTION CARDS (Dashboard)
-   ============================================ */
-
+/* Action Card */
 .action-card {
   -fx-background-color: -bg-tertiary;
   -fx-border-color: -border-color;
   -fx-border-width: 1px;
-  -fx-border-radius: -radius-lg;
-  -fx-background-radius: -radius-lg;
+  -fx-border-radius: 12px;
+  -fx-background-radius: 12px;
   -fx-padding: 24px;
   -fx-cursor: hand;
   -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 2, 0, 0, 1);
@@ -949,3 +946,221 @@
 /* ============================================
    FIN DEL STYLESHEET - VERSIÓN OPTIMIZADA
    ============================================ */
+
+/* ============================================
+   CLASES ADICIONALES PARA VISTAS CONSOLIDADAS
+   ============================================ */
+
+/* Clases de página */
+.page-title {
+  -fx-font-family: "Inter";
+  -fx-font-size: 28px;
+  -fx-font-weight: 700;
+  -fx-text-fill: -text-primary;
+}
+
+.page-subtitle {
+  -fx-font-family: "Inter";
+  -fx-font-size: 14px;
+  -fx-font-weight: 400;
+  -fx-text-fill: -text-secondary;
+}
+
+.content-header {
+  -fx-spacing: 8px;
+}
+
+.section-title {
+  -fx-font-family: "Inter";
+  -fx-font-size: 20px;
+  -fx-font-weight: 600;
+  -fx-text-fill: -text-primary;
+}
+
+.section-card {
+  -fx-background-color: white;
+  -fx-background-radius: 12px;
+  -fx-border-color: -border-color;
+  -fx-border-width: 1px;
+  -fx-border-radius: 12px;
+  -fx-padding: 24px;
+  -fx-spacing: 16px;
+}
+
+/* Stats Cards (Dashboard) */
+.stats-card {
+  -fx-background-color: linear-gradient(to bottom right, #002855, #003d7a);
+  -fx-background-radius: 12px;
+  -fx-padding: 20px;
+  -fx-alignment: center;
+  -fx-effect: dropshadow(gaussian, rgba(0, 40, 85, 0.3), 8, 0, 0, 4);
+}
+
+.stats-icon {
+  -fx-font-size: 40px;
+}
+
+.stats-number {
+  -fx-font-family: "Playfair Display";
+  -fx-font-size: 42px;
+  -fx-font-weight: 700;
+  -fx-text-fill: white;
+}
+
+.stats-label {
+  -fx-font-family: "Inter";
+  -fx-font-size: 13px;
+  -fx-font-weight: 500;
+  -fx-text-fill: rgba(255, 255, 255, 0.8);
+}
+
+/* Sidebar Buttons */
+.sidebar-button {
+  -fx-background-color: transparent;
+  -fx-text-fill: -text-secondary;
+  -fx-font-family: "Inter";
+  -fx-font-size: 15px;
+  -fx-font-weight: 500;
+  -fx-padding: 12px 16px;
+  -fx-background-radius: 8px;
+  -fx-alignment: center-left;
+  -fx-cursor: hand;
+}
+
+.sidebar-button:hover {
+  -fx-background-color: -neutral-100;
+  -fx-text-fill: -text-primary;
+}
+
+.sidebar-button-active {
+  -fx-background-color: #dbeafe;
+  -fx-text-fill: -secondary-blue-dark;
+  -fx-font-weight: 600;
+}
+
+.sidebar-section-title {
+  -fx-font-family: "Inter";
+  -fx-font-size: 12px;
+  -fx-font-weight: 600;
+  -fx-text-fill: -text-tertiary;
+  -fx-padding: 8px 16px 4px 16px;
+}
+
+.sidebar-user-role {
+  -fx-font-family: "Inter";
+  -fx-font-size: 12px;
+  -fx-text-fill: -text-tertiary;
+}
+
+/* ScrollPane Content */
+.scroll-pane-content {
+  -fx-background-color: -bg-secondary;
+  -fx-background: -bg-secondary;
+}
+
+.scroll-pane-content > .viewport {
+  -fx-background-color: -bg-secondary;
+}
+
+/* User Avatar */
+.user-avatar {
+  -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 4, 0, 0, 2);
+}
+
+/* Search Field */
+.search-field {
+  -fx-background-color: -bg-primary;
+  -fx-background-radius: 8px;
+  -fx-border-color: -border-color;
+  -fx-border-width: 1px;
+  -fx-border-radius: 8px;
+  -fx-padding: 12px 16px;
+  -fx-font-family: "Inter";
+  -fx-font-size: 16px;
+  -fx-text-fill: -text-primary;
+}
+
+.search-field:focused {
+  -fx-border-color: -secondary-blue;
+  -fx-border-width: 2px;
+}
+
+/* Filter Components */
+.filter-label {
+  -fx-font-family: "Inter";
+  -fx-font-size: 14px;
+  -fx-font-weight: 600;
+  -fx-text-fill: -text-primary;
+}
+
+.filter-combo {
+  -fx-background-color: -bg-primary;
+  -fx-background-radius: 8px;
+  -fx-border-color: -border-color;
+  -fx-border-width: 1px;
+  -fx-border-radius: 8px;
+  -fx-padding: 8px 12px;
+}
+
+/* Toggle Filter */
+.toggle-filter {
+  -fx-background-color: -neutral-100;
+  -fx-text-fill: -text-secondary;
+  -fx-background-radius: 20px;
+  -fx-padding: 8px 20px;
+  -fx-font-family: "Inter";
+  -fx-font-size: 14px;
+  -fx-font-weight: 500;
+  -fx-cursor: hand;
+  -fx-border-width: 0;
+}
+
+.toggle-filter:hover {
+  -fx-background-color: -neutral-200;
+}
+
+.toggle-filter:selected {
+  -fx-background-color: -secondary-blue;
+  -fx-text-fill: white;
+}
+
+/* Button Text */
+.button-text {
+  -fx-background-color: transparent;
+  -fx-text-fill: -secondary-blue;
+  -fx-font-family: "Inter";
+  -fx-font-size: 14px;
+  -fx-font-weight: 500;
+  -fx-cursor: hand;
+  -fx-padding: 8px 12px;
+}
+
+.button-text:hover {
+  -fx-text-fill: -secondary-blue-dark;
+  -fx-underline: true;
+}
+
+/* Empty State Subtitles */
+.empty-state-subtitle {
+  -fx-font-family: "Inter";
+  -fx-font-size: 14px;
+  -fx-text-fill: -text-tertiary;
+  -fx-text-alignment: center;
+}
+
+/* Menu Button User */
+.menu-button-user {
+  -fx-background-color: rgba(255, 255, 255, 0.1);
+  -fx-text-fill: white;
+  -fx-font-family: "Inter";
+  -fx-font-size: 14px;
+  -fx-background-radius: 8px;
+  -fx-padding: 8px 16px;
+  -fx-cursor: hand;
+}
+
+.menu-button-user:hover {
+  -fx-background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* FIN DE CLASES ADICIONALES */
