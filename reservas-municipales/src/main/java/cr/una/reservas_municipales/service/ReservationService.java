@@ -214,6 +214,13 @@ public class ReservationService {
         
         return reservationRepository.findById(id)
                 .map(reservation -> {
+                    // VALIDACIÓN: Verificar si la reserva ya está cancelada
+                    if ("CANCELLED".equals(reservation.getStatus())) {
+                        String errorMsg = "Esta reserva ya se encuentra cancelada.";
+                        log.warn("Intento de cancelar reserva {} que ya está cancelada", id);
+                        throw new CancellationNotAllowedException(errorMsg);
+                    }
+                    
                     OffsetDateTime now = OffsetDateTime.now();
                     OffsetDateTime reservationStart = reservation.getStartsAt();
                     

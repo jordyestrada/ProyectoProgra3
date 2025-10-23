@@ -167,9 +167,11 @@ Content-Type: application/json
 ```
 
 ### Cancelar reserva
-**⚠️ RESTRICCIÓN:** Debe hacerse con al menos **24 horas** de anticipación (configurable en `application-docker.yml`).
+**⚠️ RESTRICCIONES:**
+- Debe hacerse con al menos **24 horas** de anticipación (configurable en `application-docker.yml`).
 - Usuarios con rol **USER** solo pueden cancelar con 24+ horas de anticipación.
 - Usuarios con rol **ADMIN** pueden cancelar en cualquier momento.
+- **No se puede cancelar una reserva que ya está cancelada.**
 
 ```
 PATCH http://localhost:8080/api/reservations/{id}/cancel?reason=Usuario no puede asistir
@@ -185,6 +187,15 @@ PATCH http://localhost:8080/api/reservations/{id}/cancel?reason=Usuario no puede
 {
     "error": "Cancelación no permitida",
     "message": "La cancelación debe realizarse con al menos 24 horas de anticipación. Actualmente faltan 18 horas para la reserva. Solo un ADMIN puede cancelar con menos anticipación.",
+    "timestamp": "2025-10-23T10:30:00-06:00"
+}
+```
+
+**Respuesta si ya está cancelada (403 FORBIDDEN):**
+```json
+{
+    "error": "Cancelación no permitida",
+    "message": "Esta reserva ya ha sido cancelada previamente.",
     "timestamp": "2025-10-23T10:30:00-06:00"
 }
 ```
