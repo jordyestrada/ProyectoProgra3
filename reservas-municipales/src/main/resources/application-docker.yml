@@ -40,6 +40,11 @@ app:
     secret: ${JWT_SECRET:mySecretKey123456789012345678901234567890}
     expiration: 86400000 # 24 hours
     issuer: reservas-municipales
+  
+  # Reservation Cancellation Policy
+  reservations:
+    cancellation:
+      min-hours-before: 24  # Minimum hours before reservation start to allow cancellation
 
 management:
   endpoints:

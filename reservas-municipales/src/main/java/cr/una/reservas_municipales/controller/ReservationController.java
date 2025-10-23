@@ -2,6 +2,7 @@ package cr.una.reservas_municipales.controller;
 
 import cr.una.reservas_municipales.dto.ReservationDto;
 import cr.una.reservas_municipales.dto.QRValidationDto;
+import cr.una.reservas_municipales.exception.CancellationNotAllowedException;
 import cr.una.reservas_municipales.service.ReservationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -151,19 +154,48 @@ public class ReservationController {
     
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
-    public ResponseEntity<Void> cancelReservation(@PathVariable UUID id, 
-                                                  @RequestParam(required = false) String reason) {
+    public ResponseEntity<?> cancelReservation(
+            @PathVariable UUID id, 
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        
         log.info("PATCH /api/reservations/{}/cancel - Cancelando reserva", id);
+        
         try {
-            boolean cancelled = reservationService.cancelReservation(id, reason);
+            // Extraer el rol del usuario autenticado
+            String userRole = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .filter(auth -> auth.startsWith("ROLE_"))
+                    .map(auth -> auth.replace("ROLE_", ""))
+                    .findFirst()
+                    .orElse("USER");
+            
+            log.info("Usuario con rol {} intentando cancelar reserva {}", userRole, id);
+            
+            boolean cancelled = reservationService.cancelReservation(id, reason, userRole);
+            
             if (cancelled) {
                 return ResponseEntity.ok().build();
             } else {
                 return ResponseEntity.notFound().build();
             }
+            
+        } catch (CancellationNotAllowedException e) {
+            // Retornar HTTP 403 FORBIDDEN con mensaje descriptivo
+            log.warn("Cancelación no permitida: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of(
+                        "error", "Cancelación no permitida",
+                        "message", e.getMessage(),
+                        "timestamp", OffsetDateTime.now().toString()
+                    ));
         } catch (Exception e) {
             log.error("Error al cancelar reserva con ID: " + id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                        "error", "Error interno del servidor",
+                        "message", e.getMessage()
+                    ));
         }
     }
     

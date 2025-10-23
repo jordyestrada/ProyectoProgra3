@@ -124,7 +124,7 @@ GET http://localhost:8080/api/reservations/user/{userId}
 
 ### Obtener reservas por espacio
 ```
-GET http://localhost:8080/api/reservations/space/{spaceId}
+GET {http://localhost:8080/api/reservations/space/spaceId}
 ```
 
 ### Obtener reservas por estado
@@ -167,8 +167,26 @@ Content-Type: application/json
 ```
 
 ### Cancelar reserva
+**⚠️ RESTRICCIÓN:** Debe hacerse con al menos **24 horas** de anticipación (configurable en `application-docker.yml`).
+- Usuarios con rol **USER** solo pueden cancelar con 24+ horas de anticipación.
+- Usuarios con rol **ADMIN** pueden cancelar en cualquier momento.
+
 ```
 PATCH http://localhost:8080/api/reservations/{id}/cancel?reason=Usuario no puede asistir
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+(Sin contenido - vacío)
+```
+
+**Respuesta de cancelación tardía (403 FORBIDDEN):**
+```json
+{
+    "error": "Cancelación no permitida",
+    "message": "La cancelación debe realizarse con al menos 24 horas de anticipación. Actualmente faltan 18 horas para la reserva. Solo un ADMIN puede cancelar con menos anticipación.",
+    "timestamp": "2025-10-23T10:30:00-06:00"
+}
 ```
 
 ### Eliminar reserva

@@ -2,16 +2,19 @@ package cr.una.reservas_municipales.service;
 
 import cr.una.reservas_municipales.dto.ReservationDto;
 import cr.una.reservas_municipales.dto.QRValidationDto;
+import cr.una.reservas_municipales.exception.CancellationNotAllowedException;
 import cr.una.reservas_municipales.model.Reservation;
 import cr.una.reservas_municipales.repository.ReservationRepository;
 import cr.una.reservas_municipales.repository.SpaceRepository;
 import cr.una.reservas_municipales.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,6 +28,9 @@ public class ReservationService {
     private final SpaceRepository spaceRepository;
     private final UserRepository userRepository;
     private final QRCodeService qrCodeService;
+    
+    @Value("${app.reservations.cancellation.min-hours-before:24}")
+    private long minHoursBeforeCancellation;
     
     @Transactional(readOnly = true)
     public List<ReservationDto> getAllReservations() {
@@ -203,17 +209,38 @@ public class ReservationService {
     }
     
     @Transactional
-    public boolean cancelReservation(UUID id, String cancelReason) {
-        log.info("Cancelando reserva con ID: {}", id);
+    public boolean cancelReservation(UUID id, String cancelReason, String currentUserRole) {
+        log.info("Cancelando reserva con ID: {} por usuario con rol: {}", id, currentUserRole);
         
         return reservationRepository.findById(id)
                 .map(reservation -> {
+                    OffsetDateTime now = OffsetDateTime.now();
+                    OffsetDateTime reservationStart = reservation.getStartsAt();
+                    
+                    // Calcular horas hasta el inicio de la reserva
+                    // ChronoUnit.HOURS.between() automáticamente normaliza a UTC para comparación correcta
+                    long hoursUntilStart = ChronoUnit.HOURS.between(now, reservationStart);
+                    
+                    log.info("Reserva {} inicia en {} horas. Mínimo requerido: {} horas", 
+                             id, hoursUntilStart, minHoursBeforeCancellation);
+                    
+                    // VALIDACIÓN: Solo ADMIN puede cancelar con menos de X horas de anticipación
+                    if (hoursUntilStart < minHoursBeforeCancellation && !"ADMIN".equals(currentUserRole)) {
+                        String errorMsg = String.format(
+                            "La cancelación debe realizarse con al menos %d horas de anticipación. " +
+                            "Actualmente faltan %d horas para la reserva. Solo un ADMIN puede cancelar con menos anticipación.",
+                            minHoursBeforeCancellation, hoursUntilStart
+                        );
+                        log.warn("Cancelación rechazada para reserva {}: {}", id, errorMsg);
+                        throw new CancellationNotAllowedException(errorMsg);
+                    }
+                    
                     reservation.setStatus("CANCELLED");
                     reservation.setCancelReason(cancelReason);
-                    reservation.setUpdatedAt(OffsetDateTime.now());
+                    reservation.setUpdatedAt(now);
                     
                     reservationRepository.save(reservation);
-                    log.info("Reserva cancelada exitosamente: {}", id);
+                    log.info("Reserva cancelada exitosamente: {} (por {})", id, currentUserRole);
                     return true;
                 })
                 .orElse(false);
