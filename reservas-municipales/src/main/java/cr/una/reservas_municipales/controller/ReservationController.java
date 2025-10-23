@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -305,12 +306,13 @@ public class ReservationController {
                 ));
             }
             
-            return ResponseEntity.ok(Map.of(
-                "reservationId", reservation.getReservationId().toString(),
-                "qrCode", reservation.getQrCode(),
-                "attendanceConfirmed", reservation.getAttendanceConfirmed(),
-                "attendanceConfirmedAt", reservation.getAttendanceConfirmedAt()
-            ));
+            Map<String, Object> response = new HashMap<>();
+            response.put("reservationId", reservation.getReservationId().toString());
+            response.put("qrCode", reservation.getQrCode());
+            response.put("attendanceConfirmed", reservation.getAttendanceConfirmed());
+            response.put("attendanceConfirmedAt", reservation.getAttendanceConfirmedAt());
+            
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
             log.error("Error getting QR for reservation: " + id, e);
