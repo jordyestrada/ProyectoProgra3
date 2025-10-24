@@ -276,5 +276,257 @@ El dashboard utiliza cache de **10 minutos** (Caffeine):
 
 ---
 
+## Gestión de Horarios de Espacios (RF15)
+
+El sistema permite configurar horarios operativos para cada espacio municipal. Cuando un espacio tiene horarios configurados, las reservas solo pueden crearse dentro de esos horarios.
+
+### Características Principales
+
+- **Horarios por día de semana**: Cada espacio puede tener diferentes horarios para cada día
+- **Múltiples bloques**: Un espacio puede tener varios bloques horarios en el mismo día
+- **Validación automática**: Al crear una reserva, el sistema valida que esté dentro del horario del espacio
+- **Backward compatible**: Si un espacio no tiene horarios configurados, permite reservas en cualquier horario
+
+### Estructura de Horarios
+
+**Días de la semana:**
+- `0` = Domingo (Sunday)
+- `1` = Lunes (Monday)
+- `2` = Martes (Tuesday)
+- `3` = Miércoles (Wednesday)
+- `4` = Jueves (Thursday)
+- `5` = Viernes (Friday)
+- `6` = Sábado (Saturday)
+
+### Endpoints API
+
+#### 1. Obtener horarios de un espacio
+
+```
+GET /api/spaces/{spaceId}/schedules
+```
+
+**Autenticación:** Requiere JWT (cualquier usuario autenticado)
+
+**Ejemplo:**
+```powershell
+# PowerShell
+$token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+$spaceId = "uuid-del-espacio"
+Invoke-RestMethod -Uri "http://localhost:8080/api/spaces/$spaceId/schedules" -Headers @{Authorization="Bearer $token"}
+```
+
+**Response:**
+```json
+[
+  {
+    "scheduleId": 1,
+    "spaceId": "uuid-del-espacio",
+    "weekday": 1,
+    "weekdayName": "Monday",
+    "timeFrom": "08:00:00",
+    "timeTo": "12:00:00"
+  },
+  {
+    "scheduleId": 2,
+    "spaceId": "uuid-del-espacio",
+    "weekday": 1,
+    "weekdayName": "Monday",
+    "timeFrom": "14:00:00",
+    "timeTo": "18:00:00"
+  }
+]
+```
+
+#### 2. Crear un horario
+
+```
+POST /api/spaces/{spaceId}/schedules
+```
+
+**Autenticación:** Requiere rol `ADMIN` o `SUPERVISOR`
+
+**Request Body:**
+```json
+{
+  "weekday": 1,
+  "timeFrom": "08:00:00",
+  "timeTo": "12:00:00"
+}
+```
+
+**Ejemplo:**
+```powershell
+# PowerShell
+$token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+$spaceId = "uuid-del-espacio"
+$body = @{
+  weekday = 1
+  timeFrom = "08:00:00"
+  timeTo = "12:00:00"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8080/api/spaces/$spaceId/schedules" -Method POST -Headers @{Authorization="Bearer $token"; "Content-Type"="application/json"} -Body $body
+```
+
+**Validaciones:**
+- El espacio debe existir
+- `weekday` debe estar entre 0 y 6
+- `timeFrom` debe ser anterior a `timeTo`
+- No debe solaparse con horarios existentes en el mismo día
+
+**Errores comunes:**
+
+```json
+{
+  "error": "Bad Request",
+  "message": "End time must be after start time"
+}
+```
+
+```json
+{
+  "error": "Bad Request",
+  "message": "Schedule overlaps with existing schedule on Monday from 08:00 to 12:00"
+}
+```
+
+#### 3. Eliminar un horario específico
+
+```
+DELETE /api/spaces/{spaceId}/schedules/{scheduleId}
+```
+
+**Autenticación:** Requiere rol `ADMIN` o `SUPERVISOR`
+
+**Ejemplo:**
+```powershell
+# PowerShell
+$token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+Invoke-RestMethod -Uri "http://localhost:8080/api/spaces/$spaceId/schedules/1" -Method DELETE -Headers @{Authorization="Bearer $token"}
+```
+
+**Response:** `204 No Content`
+
+#### 4. Eliminar todos los horarios de un espacio
+
+```
+DELETE /api/spaces/{spaceId}/schedules
+```
+
+**Autenticación:** Requiere rol `ADMIN` solamente
+
+**Ejemplo:**
+```powershell
+# PowerShell
+$token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+Invoke-RestMethod -Uri "http://localhost:8080/api/spaces/$spaceId/schedules" -Method DELETE -Headers @{Authorization="Bearer $token"}
+```
+
+**Response:** `204 No Content`
+
+### Validación en Reservas
+
+Cuando se crea una reserva (`POST /api/reservations`), el sistema automáticamente:
+
+1. **Verifica si el espacio tiene horarios configurados**
+   - Si NO tiene horarios → permite cualquier horario (backward compatible)
+   - Si SÍ tiene horarios → valida contra ellos
+
+2. **Valida el día de la semana**
+   - Extrae el día de la fecha de inicio
+   - Busca horarios para ese día
+   - Si no hay horarios para ese día → error
+
+3. **Valida las horas**
+   - La reserva debe estar **completamente dentro** de un bloque horario
+   - No puede comenzar antes del `timeFrom`
+   - No puede terminar después del `timeTo`
+
+**Ejemplos de errores:**
+
+```json
+{
+  "error": "Bad Request",
+  "message": "El espacio no está disponible los domingos"
+}
+```
+
+```json
+{
+  "error": "Bad Request",
+  "message": "El espacio solo está disponible los lunes en los siguientes horarios: 08:00 - 12:00, 14:00 - 18:00"
+}
+```
+
+### Ejemplo Completo: Configurar Horarios
+
+#### Escenario: Salón Comunal abierto Lunes a Viernes
+
+```powershell
+# PowerShell
+$token = "tu-jwt-token"
+$spaceId = "uuid-del-espacio"
+
+# Lunes a Viernes: 8:00-12:00 y 14:00-18:00
+foreach ($day in 1..5) {
+  # Bloque mañana
+  $body1 = @{weekday=$day; timeFrom="08:00:00"; timeTo="12:00:00"} | ConvertTo-Json
+  Invoke-RestMethod -Uri "http://localhost:8080/api/spaces/$spaceId/schedules" -Method POST -Headers @{Authorization="Bearer $token"; "Content-Type"="application/json"} -Body $body1
+  
+  # Bloque tarde
+  $body2 = @{weekday=$day; timeFrom="14:00:00"; timeTo="18:00:00"} | ConvertTo-Json
+  Invoke-RestMethod -Uri "http://localhost:8080/api/spaces/$spaceId/schedules" -Method POST -Headers @{Authorization="Bearer $token"; "Content-Type"="application/json"} -Body $body2
+}
+
+# Sábado: Solo mañana 9:00-13:00
+$body3 = @{weekday=6; timeFrom="09:00:00"; timeTo="13:00:00"} | ConvertTo-Json
+Invoke-RestMethod -Uri "http://localhost:8080/api/spaces/$spaceId/schedules" -Method POST -Headers @{Authorization="Bearer $token"; "Content-Type"="application/json"} -Body $body3
+```
+
+### Base de Datos
+
+La tabla `space_schedule` almacena los horarios:
+
+```sql
+CREATE TABLE space_schedule (
+  schedule_id  bigserial PRIMARY KEY,
+  space_id     uuid NOT NULL,
+  weekday      smallint NOT NULL,  -- 0=Sunday, 6=Saturday
+  time_from    time NOT NULL,
+  time_to      time NOT NULL,
+  CONSTRAINT fk_space_schedule_space
+    FOREIGN KEY (space_id) REFERENCES space(space_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_space_schedule_weekday ON space_schedule (space_id, weekday);
+```
+
+### Implementación ORM (Sin @Query)
+
+Todos los métodos usan **derived queries** de Spring Data JPA:
+
+```java
+// SpaceScheduleRepository
+List<SpaceSchedule> findBySpace_SpaceId(UUID spaceId);
+List<SpaceSchedule> findBySpace_SpaceIdAndWeekday(UUID spaceId, Short weekday);
+void deleteBySpace_SpaceId(UUID spaceId);
+boolean existsBySpace_SpaceId(UUID spaceId);
+long countBySpace_SpaceId(UUID spaceId);
+```
+
+Siguiendo la recomendación del profesor de **evitar @Query** y usar métodos derivados.
+
+### Casos de Uso
+
+1. **Espacio nuevo sin horarios**: Funciona como antes, acepta cualquier horario
+2. **Configurar horarios regulares**: ADMIN configura horarios de operación
+3. **Reserva dentro de horario**: Se crea normalmente
+4. **Reserva fuera de horario**: Sistema rechaza con mensaje descriptivo
+5. **Modificar horarios**: ADMIN puede agregar/eliminar horarios según necesidades
+6. **Eliminar horarios**: Si se eliminan todos los horarios, vuelve al comportamiento sin restricciones
+
+---
+
 Conclusión
 - Levanté Postgres y la aplicación con el perfil `docker`. La app respondió en `localhost:8080`, pero los endpoints de Actuator están protegidos por la configuración de seguridad por defecto. Si quieres, puedo fijar credenciales en `application-docker.yml` para facilitar pruebas.

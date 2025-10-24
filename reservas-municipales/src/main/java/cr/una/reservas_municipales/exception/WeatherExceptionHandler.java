@@ -65,6 +65,22 @@ public class WeatherExceptionHandler {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
     }
 
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<WeatherErrorDTO> handleBusinessException(
+            BusinessException ex, WebRequest request) {
+        log.error("Business logic error: {}", ex.getMessage());
+        
+        WeatherErrorDTO error = WeatherErrorDTO.builder()
+                .error("BUSINESS_ERROR")
+                .message(ex.getMessage())
+                .timestamp(OffsetDateTime.now())
+                .path(request.getDescription(false).replace("uri=", ""))
+                .status(HttpStatus.BAD_REQUEST.value())
+                .build();
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<WeatherErrorDTO> handleGenericException(
             Exception ex, WebRequest request) {

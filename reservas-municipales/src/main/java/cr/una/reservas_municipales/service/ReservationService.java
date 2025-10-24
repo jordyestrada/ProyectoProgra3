@@ -2,10 +2,13 @@ package cr.una.reservas_municipales.service;
 
 import cr.una.reservas_municipales.dto.ReservationDto;
 import cr.una.reservas_municipales.dto.QRValidationDto;
+import cr.una.reservas_municipales.exception.BusinessException;
 import cr.una.reservas_municipales.exception.CancellationNotAllowedException;
 import cr.una.reservas_municipales.model.Reservation;
+import cr.una.reservas_municipales.model.SpaceSchedule;
 import cr.una.reservas_municipales.repository.ReservationRepository;
 import cr.una.reservas_municipales.repository.SpaceRepository;
+import cr.una.reservas_municipales.repository.SpaceScheduleRepository;
 import cr.una.reservas_municipales.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +16,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -27,6 +32,7 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final SpaceRepository spaceRepository;
     private final UserRepository userRepository;
+    private final SpaceScheduleRepository spaceScheduleRepository;
     private final QRCodeService qrCodeService;
     
     @Value("${app.reservations.cancellation.min-hours-before:24}")
@@ -83,18 +89,18 @@ public class ReservationService {
         
         // Validar que el espacio existe
         if (!spaceRepository.existsById(reservationDto.getSpaceId())) {
-            throw new RuntimeException("El espacio especificado no existe");
+            throw new BusinessException("El espacio especificado no existe");
         }
         
         // Validar que el usuario existe
         if (!userRepository.existsById(reservationDto.getUserId())) {
-            throw new RuntimeException("El usuario especificado no existe");
+            throw new BusinessException("El usuario especificado no existe");
         }
         
         // Validar que la fecha de fin sea posterior a la de inicio
         if (reservationDto.getEndsAt().isBefore(reservationDto.getStartsAt()) || 
             reservationDto.getEndsAt().isEqual(reservationDto.getStartsAt())) {
-            throw new RuntimeException("La fecha de fin debe ser posterior a la fecha de inicio");
+            throw new BusinessException("La fecha de fin debe ser posterior a la fecha de inicio");
         }
         
         // Verificar que no hay conflictos de horario
@@ -105,8 +111,11 @@ public class ReservationService {
         );
         
         if (!conflicts.isEmpty()) {
-            throw new RuntimeException("Ya existe una reserva confirmada o pendiente para ese espacio en el horario solicitado");
+            throw new BusinessException("Ya existe una reserva confirmada o pendiente para ese espacio en el horario solicitado");
         }
+        
+        // RF15: Validar que la reserva está dentro del horario del espacio
+        validateSchedule(reservationDto.getSpaceId(), reservationDto.getStartsAt(), reservationDto.getEndsAt());
         
         Reservation reservation = convertToEntity(reservationDto);
         reservation.setReservationId(UUID.randomUUID());
@@ -154,27 +163,28 @@ public class ReservationService {
         
         return reservationRepository.findById(id)
                 .map(existingReservation -> {
-                    // Verificar conflictos de horario solo si se cambian las fechas
-                    if (reservationDto.getStartsAt() != null && reservationDto.getEndsAt() != null) {
-                        // Validar que la fecha de fin sea posterior a la de inicio
-                        if (reservationDto.getEndsAt().isBefore(reservationDto.getStartsAt()) || 
-                            reservationDto.getEndsAt().isEqual(reservationDto.getStartsAt())) {
-                            throw new RuntimeException("La fecha de fin debe ser posterior a la fecha de inicio");
-                        }
-                        
-                        // Verificar conflictos (excluyendo la reserva actual)
-                        List<Reservation> conflicts = reservationRepository.findConflictingReservations(
-                                existingReservation.getSpaceId(),
-                                reservationDto.getStartsAt(),
-                                reservationDto.getEndsAt()
-                        );
-                        
-                        conflicts = conflicts.stream()
+                // Verificar conflictos de horario solo si se cambian las fechas
+                if (reservationDto.getStartsAt() != null && reservationDto.getEndsAt() != null) {
+                    // Validar que la fecha de fin sea posterior a la de inicio
+                    if (reservationDto.getEndsAt().isBefore(reservationDto.getStartsAt()) || 
+                        reservationDto.getEndsAt().isEqual(reservationDto.getStartsAt())) {
+                        throw new BusinessException("La fecha de fin debe ser posterior a la fecha de inicio");
+                    }
+                    
+                    // RF15: Validar que la reserva está dentro del horario del espacio
+                    validateSchedule(existingReservation.getSpaceId(), reservationDto.getStartsAt(), reservationDto.getEndsAt());
+                    
+                    // Verificar conflictos (excluyendo la reserva actual)
+                    List<Reservation> conflicts = reservationRepository.findConflictingReservations(
+                            existingReservation.getSpaceId(),
+                            reservationDto.getStartsAt(),
+                            reservationDto.getEndsAt()
+                    );                        conflicts = conflicts.stream()
                                 .filter(r -> !r.getReservationId().equals(id))
                                 .collect(Collectors.toList());
                         
                         if (!conflicts.isEmpty()) {
-                            throw new RuntimeException("Ya existe una reserva confirmada o pendiente para ese espacio en el horario solicitado");
+                            throw new BusinessException("Ya existe una reserva confirmada o pendiente para ese espacio en el horario solicitado");
                         }
                         
                         existingReservation.setStartsAt(reservationDto.getStartsAt());
@@ -402,5 +412,85 @@ public class ReservationService {
                     }
                 })
                 .orElseThrow(() -> new RuntimeException("Reservation not found"));
+    }
+    
+    /**
+     * RF15: Valida que una reserva está dentro del horario operativo del espacio
+     * Si el espacio tiene horarios configurados, valida que la reserva esté dentro de ellos
+     * Si no tiene horarios configurados, permite cualquier horario (backward compatibility)
+     */
+    private void validateSchedule(UUID spaceId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
+        // Verificar si el espacio tiene horarios configurados
+        boolean hasSchedules = spaceScheduleRepository.existsBySpace_SpaceId(spaceId);
+        
+        if (!hasSchedules) {
+            log.debug("Space {} has no schedules configured, allowing reservation", spaceId);
+            return; // Si no hay horarios, permite cualquier horario
+        }
+        
+        // Convertir a zona horaria de Costa Rica para validar contra horarios locales
+        java.time.ZoneId costaRicaZone = java.time.ZoneId.of("America/Costa_Rica");
+        java.time.ZonedDateTime localStartsAt = startsAt.atZoneSameInstant(costaRicaZone);
+        java.time.ZonedDateTime localEndsAt = endsAt.atZoneSameInstant(costaRicaZone);
+        
+        // Convertir DayOfWeek (1=Monday, 7=Sunday) a weekday (0=Sunday, 1=Monday)
+        DayOfWeek dayOfWeek = localStartsAt.getDayOfWeek();
+        short weekday = (short) (dayOfWeek.getValue() % 7); // 1-7 -> 1-6,0
+        
+        LocalTime startTime = localStartsAt.toLocalTime();
+        LocalTime endTime = localEndsAt.toLocalTime();
+        
+        log.debug("Validating reservation for space {} on weekday {} ({}) from {} to {}", 
+                spaceId, weekday, dayOfWeek, startTime, endTime);
+        
+        // Obtener los horarios del espacio para ese día
+        List<SpaceSchedule> schedules = spaceScheduleRepository.findBySpace_SpaceIdAndWeekday(spaceId, weekday);
+        
+        if (schedules.isEmpty()) {
+            throw new BusinessException(
+                String.format("El espacio no está disponible los %ss", getDayName(weekday))
+            );
+        }
+        
+        // Verificar que la reserva está dentro de alguno de los horarios del espacio
+        boolean isWithinSchedule = false;
+        for (SpaceSchedule schedule : schedules) {
+            // La reserva debe comenzar y terminar dentro del mismo bloque horario
+            if (!startTime.isBefore(schedule.getTimeFrom()) && 
+                !endTime.isAfter(schedule.getTimeTo())) {
+                isWithinSchedule = true;
+                break;
+            }
+        }
+        
+        if (!isWithinSchedule) {
+            // Construir mensaje con los horarios disponibles
+            String availableTimes = schedules.stream()
+                    .map(s -> s.getTimeFrom() + " - " + s.getTimeTo())
+                    .collect(Collectors.joining(", "));
+                    
+            throw new BusinessException(
+                String.format("El espacio solo está disponible los %ss en los siguientes horarios: %s",
+                    getDayName(weekday), availableTimes)
+            );
+        }
+        
+        log.debug("Reservation validated successfully within schedule");
+    }
+    
+    /**
+     * Helper para obtener nombre del día en español
+     */
+    private String getDayName(short weekday) {
+        return switch (weekday) {
+            case 0 -> "domingo";
+            case 1 -> "lune";
+            case 2 -> "marte";
+            case 3 -> "miércole";
+            case 4 -> "jueve";
+            case 5 -> "vierne";
+            case 6 -> "sábado";
+            default -> "día desconocido";
+        };
     }
 }

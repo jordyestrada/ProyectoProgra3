@@ -119,16 +119,8 @@ public class ReservationController {
     public ResponseEntity<ReservationDto> createReservation(@Valid @RequestBody ReservationDto reservationDto) {
         log.info("POST /api/reservations - Creando nueva reserva");
         log.debug("Datos de la reserva: {}", reservationDto);
-        try {
-            ReservationDto created = reservationService.createReservation(reservationDto);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
-        } catch (RuntimeException e) {
-            log.error("Error de negocio al crear reserva: " + e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        } catch (Exception e) {
-            log.error("Error interno al crear reserva", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        ReservationDto created = reservationService.createReservation(reservationDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
     
     @PutMapping("/{id}")
@@ -137,19 +129,11 @@ public class ReservationController {
                                                            @Valid @RequestBody ReservationDto reservationDto) {
         log.info("PUT /api/reservations/{} - Actualizando reserva", id);
         log.debug("Nuevos datos: {}", reservationDto);
-        try {
-            ReservationDto updated = reservationService.updateReservation(id, reservationDto);
-            if (updated != null) {
-                return ResponseEntity.ok(updated);
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } catch (RuntimeException e) {
-            log.error("Error de negocio al actualizar reserva: " + e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        } catch (Exception e) {
-            log.error("Error interno al actualizar reserva con ID: " + id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        ReservationDto updated = reservationService.updateReservation(id, reservationDto);
+        if (updated != null) {
+            return ResponseEntity.ok(updated);
+        } else {
+            return ResponseEntity.notFound().build();
         }
     }
     

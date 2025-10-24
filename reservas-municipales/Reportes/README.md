@@ -387,3 +387,60 @@ Authorization: Bearer [token]
 - ✅ Análisis de ingresos con tendencias mes a mes
 - ✅ Identificación de días y horas pico
 - ✅ Top 5 espacios más rentables
+
+---
+
+## SpaceScheduleController - Horarios de Espacios (RF15)
+
+### Obtener horarios de un espacio
+```
+GET http://localhost:8080/api/spaces/{spaceId}/schedules
+Authorization: Bearer [token]
+```
+
+**Response:**
+```json
+[
+  {
+    "scheduleId": 1,
+    "spaceId": "uuid-del-espacio",
+    "weekday": 1,
+    "weekdayName": "Monday",
+    "timeFrom": "08:00:00",
+    "timeTo": "12:00:00"
+  }
+]
+```
+
+### Crear horario (Solo ADMIN/SUPERVISOR)
+```
+POST http://localhost:8080/api/spaces/{spaceId}/schedules
+Authorization: Bearer [token]
+Content-Type: application/json
+
+{
+  "weekday": 1,
+  "timeFrom": "08:00:00",
+  "timeTo": "12:00:00"
+}
+```
+
+**Días de la semana:** 0=Domingo, 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes, 6=Sábado
+
+### Eliminar horario específico (Solo ADMIN/SUPERVISOR)
+```
+DELETE http://localhost:8080/api/spaces/{spaceId}/schedules/{scheduleId}
+Authorization: Bearer [token]
+```
+
+### Eliminar todos los horarios (Solo ADMIN)
+```
+DELETE http://localhost:8080/api/spaces/{spaceId}/schedules
+Authorization: Bearer [token]
+```
+
+**Validación automática en reservas:**
+- ✅ Si el espacio tiene horarios configurados, las reservas solo pueden **crearse y actualizarse** dentro de esos horarios
+- ✅ Si el espacio NO tiene horarios, permite cualquier horario (backward compatible)
+- ✅ La reserva debe estar completamente dentro de un bloque horario
+- ✅ Mensajes de error descriptivos en español
