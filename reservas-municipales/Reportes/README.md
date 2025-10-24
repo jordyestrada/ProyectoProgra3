@@ -323,3 +323,67 @@ DELETE http://localhost:8080/api/reviews/[id]
 - 1: Parque
 - 2: Salón Comunal
 - 3: Campo Deportivo
+
+---
+
+## DashboardController - Métricas del Sistema
+
+### Obtener métricas del dashboard (Solo ADMIN/SUPERVISOR)
+```
+GET http://localhost:8080/api/admin/dashboard
+Authorization: Bearer [token]
+```
+
+**Response incluye 5 categorías de métricas:**
+
+```json
+{
+  "generalMetrics": {
+    "totalReservations": 245,
+    "totalSpaces": 12,
+    "totalUsers": 89,
+    "activeReservations": 34
+  },
+  "reservationsByStatus": {
+    "CONFIRMED": 28,
+    "PENDING": 6,
+    "CANCELLED": 15,
+    "COMPLETED": 196
+  },
+  "revenueMetrics": {
+    "currentMonthRevenue": 12500.0,
+    "lastMonthRevenue": 10800.0,
+    "percentageChange": 15.74
+  },
+  "topSpaces": [
+    {
+      "spaceId": "uuid",
+      "spaceName": "Salón Comunal Norte",
+      "reservationCount": 45,
+      "totalRevenue": 4500.0
+    }
+  ],
+  "temporalMetrics": {
+    "reservationsToday": 5,
+    "reservationsThisWeek": 34,
+    "reservationsThisMonth": 128,
+    "reservationsByDayOfWeek": {
+      "MONDAY": 18,
+      "FRIDAY": 30
+    },
+    "reservationsByHour": {
+      "8": 5,
+      "14": 18,
+      "16": 22
+    },
+    "mostPopularDay": "FRIDAY",
+    "mostPopularHour": 16
+  }
+}
+```
+
+**Características:**
+- ✅ Cache de 10 minutos para optimización
+- ✅ Análisis de ingresos con tendencias mes a mes
+- ✅ Identificación de días y horas pico
+- ✅ Top 5 espacios más rentables

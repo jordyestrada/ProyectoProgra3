@@ -41,4 +41,26 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
            "AND ((r.startsAt <= :endsAt AND r.endsAt >= :startsAt))")
     List<UUID> findOccupiedSpaceIds(@Param("startsAt") OffsetDateTime startsAt,
                                    @Param("endsAt") OffsetDateTime endsAt);
+    
+    // ============ MÉTODOS PARA MÉTRICAS (ORM PURO) ============
+    
+    // Contar por estado específico
+    long countByStatus(String status);
+    
+    // Contar reservas activas (múltiples estados)
+    long countByStatusIn(List<String> statuses);
+    
+    // Reservas en rango de fechas (para cálculo de ingresos)
+    List<Reservation> findByCreatedAtBetween(OffsetDateTime start, OffsetDateTime end);
+    
+    // Todas las reservas de un espacio (para top spaces)
+    List<Reservation> findBySpaceId(UUID spaceId);
+    
+    // ============ MÉTODOS PARA MÉTRICAS TEMPORALES ============
+    
+    // Contar reservas desde una fecha específica
+    long countByCreatedAtGreaterThanEqual(OffsetDateTime date);
+    
+    // Obtener reservas que comienzan en un rango (para análisis por día/hora)
+    List<Reservation> findByStartsAtBetween(OffsetDateTime start, OffsetDateTime end);
 }
