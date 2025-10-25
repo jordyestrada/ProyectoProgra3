@@ -2,15 +2,22 @@ package cr.una.reservas_municipales.service;
 
 import cr.una.reservas_municipales.dto.JwtResponse;
 import cr.una.reservas_municipales.dto.LoginRequest;
+import cr.una.reservas_municipales.model.Role;
 import cr.una.reservas_municipales.model.User;
+import cr.una.reservas_municipales.repository.RoleRepository;
 import cr.una.reservas_municipales.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -18,8 +25,12 @@ import java.util.Optional;
 public class AuthenticationService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final JwtService jwtService;
     private final AzureAdService azureAdService;
+
+    @Value("${app.auth.azure.auto-provision:false}")
+    private boolean autoProvision;
 
     public JwtResponse authenticateUser(LoginRequest loginRequest) {
         try {
@@ -95,19 +106,65 @@ public class AuthenticationService {
         );
     }
 
+    @Transactional
     private User findOrCreateUser(AzureAdService.AzureUserInfo azureUserInfo) {
-        Optional<User> existingUser = userRepository.findByEmail(azureUserInfo.getEmail());
+        final String email = normalizeEmail(azureUserInfo.getEmail());
+        final String fullName = coalesce(azureUserInfo.getName(), azureUserInfo.getPreferredUsername(), email);
+        
+        Optional<User> existingUser = userRepository.findByEmail(email);
         
         if (existingUser.isPresent()) {
-            return existingUser.get();
+            User user = existingUser.get();
+            if (!user.isActive()) {
+                throw new BadCredentialsException("User is disabled. Contact administrator.");
+            }
+            return user;
         }
         
-        // Create new user from Azure AD info
-        // Note: You'll need to implement proper role assignment logic
-        log.info("Creating new user from Azure AD: {}", azureUserInfo.getEmail());
+        // Usuario no existe
+        if (!autoProvision) {
+            log.error("Authentication failed: User not found in local database. Auto-provision disabled.");
+            throw new BadCredentialsException(
+                "Authentication failed: User not found in local database. Please contact administrator to create your account."
+            );
+        }
         
-        // For now, assign default role - you should implement proper role logic
-        throw new RuntimeException("User not found in local database. Please contact administrator to create your account.");
+        // Auto-provisioning activado
+        log.info("Auto-provisioning new user from Azure AD: {}", email);
+        
+        User newUser = new User();
+        newUser.setUserId(UUID.randomUUID());
+        newUser.setEmail(email);
+        newUser.setFullName(fullName);
+        newUser.setActive(true);
+        newUser.setPasswordHash(null);
+        newUser.setPhone(null);
+        
+        // Asignar rol USER por defecto
+        Role userRole = roleRepository.findById("USER")
+            .orElseThrow(() -> new RuntimeException("Default role USER not found in database"));
+        newUser.setRole(userRole);
+        
+        OffsetDateTime now = OffsetDateTime.now();
+        newUser.setCreatedAt(now);
+        newUser.setUpdatedAt(now);
+        
+        try {
+            return userRepository.save(newUser);
+        } catch (DataIntegrityViolationException dup) {
+            // En caso de carrera: alguien lo creó a la vez → recupéralo
+            return userRepository.findByEmail(email)
+                .orElseThrow(() -> dup);
+        }
+    }
+    
+    private static String normalizeEmail(String e) {
+        return e == null ? null : e.trim().toLowerCase();
+    }
+    
+    private static String coalesce(String... vals) {
+        for (String v : vals) if (v != null && !v.isBlank()) return v;
+        return null;
     }
 
     public boolean validateToken(String token) {

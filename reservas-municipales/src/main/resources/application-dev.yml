@@ -28,6 +28,9 @@ app:
     secret: myDevSecretKey123456789012345678901234567890
     expiration: 86400000 # 24 hours
     issuer: reservas-municipales-dev
+  auth:
+    azure:
+      auto-provision: true
 
 management:
   endpoints:

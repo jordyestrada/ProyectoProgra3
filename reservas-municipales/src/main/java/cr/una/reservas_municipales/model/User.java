@@ -7,7 +7,9 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "app_user")
+@Table(name = "app_user", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_app_user_email", columnNames = "email")
+})
 @Data
 public class User {
     @Id
