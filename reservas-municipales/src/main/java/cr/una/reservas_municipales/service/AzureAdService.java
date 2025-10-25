@@ -99,10 +99,6 @@ public class AzureAdService {
         
         public String getId() { return id; }
         public void setId(String id) { this.id = id; }
-        
-        // Métodos auxiliares para AuthenticationService
-        public String getName() { return displayName; }
-        public String getPreferredUsername() { return email; }
 
         public static class AzureUserInfoBuilder {
             private AzureUserInfo userInfo = new AzureUserInfo();

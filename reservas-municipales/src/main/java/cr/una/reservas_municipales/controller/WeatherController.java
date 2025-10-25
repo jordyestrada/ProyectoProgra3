@@ -27,7 +27,6 @@ public class WeatherController {
      * Obtiene el clima para un espacio específico
      */
     @GetMapping("/space/{spaceId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<WeatherDTO> getWeatherForSpace(@PathVariable UUID spaceId) {
         log.info("GET /api/weather/space/{}", spaceId);
         
@@ -40,7 +39,6 @@ public class WeatherController {
      * Obtiene el clima por ciudad/ubicación
      */
     @GetMapping("/location")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<WeatherDTO> getWeatherByLocation(
             @RequestParam(name = "location") String location) {
         log.info("GET /api/weather/location?location={}", location);
