@@ -98,7 +98,7 @@ GET http://localhost:8080/api/admin/dashboard
 
 ```powershell
 # PowerShell
-Invoke-RestMethod -Uri "http://localhost:8080/api/auth/login" -Method POST -ContentType "application/json" -Body '{"email":"admin@municipalidad.cr","password":"testpass"}'
+Invoke-RestMethod -Uri "http://localhost:8080/api/auth/login" -Method POST -ContentType "application/json" -Body '{"email":"admin@test.com","password":"admin123"}'
 ```
 
 O con curl (Git Bash / WSL):
@@ -106,7 +106,7 @@ O con curl (Git Bash / WSL):
 ```bash
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@municipalidad.cr","password":"testpass"}'
+  -d '{"email":"admin@test.com","password":"admin123"}'
 ```
 
 **Response:**
@@ -525,6 +525,52 @@ Siguiendo la recomendación del profesor de **evitar @Query** y usar métodos de
 4. **Reserva fuera de horario**: Sistema rechaza con mensaje descriptivo
 5. **Modificar horarios**: ADMIN puede agregar/eliminar horarios según necesidades
 6. **Eliminar horarios**: Si se eliminan todos los horarios, vuelve al comportamiento sin restricciones
+
+---
+
+## Sistema de Notificaciones por Email con QR Codes
+
+El sistema ahora envía notificaciones automáticas por email cuando se crean o cancelan reservas.
+
+### Características
+
+- ✅ **Email de confirmación**: Se envía automáticamente al crear una reserva (incluye código QR embebido)
+- ✅ **Email de cancelación**: Se envía automáticamente al cancelar una reserva
+- ✅ **Templates HTML profesionales**: Diseño responsivo con Thymeleaf
+- ✅ **QR Code embebido**: Como imagen inline, no como adjunto
+- ✅ **Multi-perfil**: Gmail SMTP (dev) y MailHog (docker)
+
+### Configuración de Perfiles
+
+**Perfil `dev` (desarrollo local):**
+- Servidor SMTP: Gmail (`smtp.gmail.com:587`)
+- Emails se envían a direcciones reales
+- Ver guía completa: `PRUEBA_EMAIL.md`
+
+**Perfil `docker` (testing local):**
+- Servidor SMTP: MailHog (`localhost:1025`)
+- Emails se capturan localmente (NO se envían a Gmail real)
+- Ver emails en: http://localhost:8025
+- Ver guía completa: `PRUEBA_EMAIL_DOCKER.md`
+
+### Probar Notificaciones
+
+Ver guías detalladas:
+- `PRUEBA_EMAIL.md` - Guía para perfil dev (Gmail)
+- `PRUEBA_EMAIL_DOCKER.md` - Guía para perfil docker (MailHog)
+
+### Usuarios de Prueba
+
+Todos los usuarios usan el password: **`admin123`** (cifrado con BCrypt)
+
+| Email | Nombre | Role |
+|-------|--------|------|
+| `admin@test.com` | Administrador Sistema | ADMIN |
+| `harolah26@gmail.com` | Harold Hernández | USER |
+| `usuario@test.com` | Usuario Prueba | USER |
+| `supervisor@test.com` | Supervisor Municipal | SUPERVISOR |
+
+**⚠️ IMPORTANTE:** El sistema ahora usa **BCrypt** para autenticación. Si tienes usuarios existentes en la base de datos de producción con passwords en texto plano, debes ejecutar el script de migración `migrate-passwords.sql` antes de desplegar. Ver detalles en `MIGRACION_PASSWORDS.md`.
 
 ---
 

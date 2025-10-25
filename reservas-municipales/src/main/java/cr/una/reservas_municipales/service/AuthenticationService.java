@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -20,6 +21,7 @@ public class AuthenticationService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final AzureAdService azureAdService;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public JwtResponse authenticateUser(LoginRequest loginRequest) {
         try {
@@ -80,9 +82,13 @@ public class AuthenticationService {
         
         User user = userOpt.get();
         
-        if (!"testpass".equals(password)) {
+        // Validate password using BCrypt
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            log.error("Password mismatch for user: {}", email);
             throw new BadCredentialsException("Invalid credentials");
         }
+        
+        log.info("User authenticated successfully: {}", email);
         
         String jwtToken = jwtService.generateToken(user.getEmail(), "ROLE_" + user.getRole().getCode());
         
