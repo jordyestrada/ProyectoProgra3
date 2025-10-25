@@ -22,22 +22,6 @@ spring:
       active-directory:
         enabled: false  # Disable for local development
 
-  # Email Configuration
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: reservas.muni.pz@gmail.com
-    password: wjca dbyg aixv hkmg
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
-
 # JWT Configuration
 app:
   jwt:

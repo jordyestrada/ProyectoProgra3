@@ -124,18 +124,6 @@
 			<artifactId>caffeine</artifactId>
 		</dependency>
 
-		<!-- Email Support -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-mail</artifactId>
-		</dependency>
-
-		<!-- Thymeleaf para plantillas HTML de email -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-thymeleaf</artifactId>
-		</dependency>
-
 		<!-- Resilience4j Spring Boot 3 Starter -->
 		<dependency>
 			<groupId>io.github.resilience4j</groupId>

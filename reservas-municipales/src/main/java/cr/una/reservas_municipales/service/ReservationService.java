@@ -10,8 +10,8 @@ import cr.una.reservas_municipales.repository.ReservationRepository;
 import cr.una.reservas_municipales.repository.SpaceRepository;
 import cr.una.reservas_municipales.repository.SpaceScheduleRepository;
 import cr.una.reservas_municipales.repository.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,35 +25,18 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class ReservationService {
-    
-    private static final Logger log = LoggerFactory.getLogger(ReservationService.class);
     
     private final ReservationRepository reservationRepository;
     private final SpaceRepository spaceRepository;
     private final UserRepository userRepository;
     private final SpaceScheduleRepository spaceScheduleRepository;
     private final QRCodeService qrCodeService;
-    private final EmailService emailService;
     
     @Value("${app.reservations.cancellation.min-hours-before:24}")
     private long minHoursBeforeCancellation;
-    
-    // Constructor manual sin Lombok
-    public ReservationService(
-            ReservationRepository reservationRepository,
-            SpaceRepository spaceRepository,
-            UserRepository userRepository,
-            SpaceScheduleRepository spaceScheduleRepository,
-            QRCodeService qrCodeService,
-            EmailService emailService) {
-        this.reservationRepository = reservationRepository;
-        this.spaceRepository = spaceRepository;
-        this.userRepository = userRepository;
-        this.spaceScheduleRepository = spaceScheduleRepository;
-        this.qrCodeService = qrCodeService;
-        this.emailService = emailService;
-    }
     
     @Transactional(readOnly = true)
     public List<ReservationDto> getAllReservations() {
@@ -171,9 +154,6 @@ public class ReservationService {
         Reservation saved = reservationRepository.save(reservation);
         log.info("Reserva creada exitosamente con ID: {}", saved.getReservationId());
         
-        // Enviar email de confirmación con QR
-        sendConfirmationEmail(saved);
-        
         return convertToDto(saved);
     }
     
@@ -276,12 +256,8 @@ public class ReservationService {
                     reservation.setCancelReason(cancelReason);
                     reservation.setUpdatedAt(now);
                     
-                    Reservation cancelled = reservationRepository.save(reservation);
+                    reservationRepository.save(reservation);
                     log.info("Reserva cancelada exitosamente: {} (por {})", id, currentUserRole);
-                    
-                    // Enviar email de cancelación
-                    sendCancellationEmail(cancelled);
-                    
                     return true;
                 })
                 .orElse(false);
@@ -516,106 +492,5 @@ public class ReservationService {
             case 6 -> "sábado";
             default -> "día desconocido";
         };
-    }
-    
-    /**
-     * Envía email de confirmación de reserva con código QR
-     */
-    private void sendConfirmationEmail(Reservation reservation) {
-        try {
-            var user = userRepository.findById(reservation.getUserId()).orElse(null);
-            var space = spaceRepository.findById(reservation.getSpaceId()).orElse(null);
-            
-            if (user == null || user.getEmail() == null || space == null) {
-                log.warn("No se pudo enviar email de confirmación: datos faltantes");
-                return;
-            }
-            
-            if (reservation.getQrCode() == null) {
-                log.warn("No se pudo enviar email: QR code no generado");
-                return;
-            }
-            
-            // Decodificar el QR code de base64
-            byte[] qrCodeBytes = java.util.Base64.getDecoder().decode(reservation.getQrCode());
-            
-            // Formatear fecha y hora
-            java.util.Locale spanishLocale = java.util.Locale.of("es", "CR");
-            java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", spanishLocale);
-            java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a", spanishLocale);
-            
-            String formattedDate = reservation.getStartsAt().format(dateFormatter);
-            String formattedStartTime = reservation.getStartsAt().format(timeFormatter);
-            String formattedEndTime = reservation.getEndsAt().format(timeFormatter);
-            
-            // Preparar variables para la plantilla
-            java.util.Map<String, Object> variables = new java.util.HashMap<>();
-            variables.put("userName", user.getFullName());
-            variables.put("spaceName", space.getName());
-            variables.put("reservationDate", formattedDate);
-            variables.put("startTime", formattedStartTime);
-            variables.put("endTime", formattedEndTime);
-            variables.put("status", reservation.getStatus().toString());
-            
-            emailService.sendEmailWithEmbeddedImage(
-                user.getEmail(),
-                "Confirmación de Reserva - " + space.getName(),
-                "mail/reservation-confirmation",
-                variables,
-                qrCodeBytes,
-                "qrCode"
-            );
-            
-            log.info("Email de confirmación enviado a: {}", user.getEmail());
-        } catch (Exception e) {
-            log.error("Error enviando email de confirmación para reserva: {}", reservation.getReservationId(), e);
-            // No fallar la operación completa si solo falla el email
-        }
-    }
-    
-    /**
-     * Envía email de cancelación de reserva
-     */
-    private void sendCancellationEmail(Reservation reservation) {
-        try {
-            var user = userRepository.findById(reservation.getUserId()).orElse(null);
-            var space = spaceRepository.findById(reservation.getSpaceId()).orElse(null);
-            
-            if (user == null || user.getEmail() == null || space == null) {
-                log.warn("No se pudo enviar email de cancelación: datos faltantes");
-                return;
-            }
-            
-            // Formatear fecha y hora
-            java.util.Locale spanishLocale = java.util.Locale.of("es", "CR");
-            java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", spanishLocale);
-            java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a", spanishLocale);
-            
-            String formattedDate = reservation.getStartsAt().format(dateFormatter);
-            String formattedStartTime = reservation.getStartsAt().format(timeFormatter);
-            String formattedEndTime = reservation.getEndsAt().format(timeFormatter);
-            
-            // Preparar variables para la plantilla
-            java.util.Map<String, Object> variables = new java.util.HashMap<>();
-            variables.put("userName", user.getFullName());
-            variables.put("spaceName", space.getName());
-            variables.put("reservationDate", formattedDate);
-            variables.put("startTime", formattedStartTime);
-            variables.put("endTime", formattedEndTime);
-            variables.put("status", reservation.getStatus().toString());
-            variables.put("cancellationReason", reservation.getCancelReason() != null ? reservation.getCancelReason() : "No especificado");
-            
-            emailService.sendEmail(
-                user.getEmail(),
-                "Cancelación de Reserva - " + space.getName(),
-                "mail/reservation-cancellation",
-                variables
-            );
-            
-            log.info("Email de cancelación enviado a: {}", user.getEmail());
-        } catch (Exception e) {
-            log.error("Error enviando email de cancelación para reserva: {}", reservation.getReservationId(), e);
-            // No fallar la operación completa si solo falla el email
-        }
     }
 }
