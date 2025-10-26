@@ -14,6 +14,24 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  # Configuración de correo (Gmail SMTP con App Password)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: reservas.muni.pz@gmail.com
+    password: atofhusshbwiboya  # Gmail App Password (16 caracteres)
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    default-encoding: UTF-8
+
   # Azure AD Configuration for Development (DISABLED)
   cloud:
     azure:
@@ -28,6 +46,10 @@ app:
     secret: myDevSecretKey123456789012345678901234567890
     expiration: 86400000 # 24 hours
     issuer: reservas-municipales-dev
+  # Configuración de notificaciones
+  notifications:
+    from: reservas.muni.pz@gmail.com  # Debe coincidir con spring.mail.username
+    admin: ${APP_NOTIFICATIONS_ADMIN:}
 
 management:
   endpoints:

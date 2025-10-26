@@ -10,6 +10,7 @@ import cr.una.reservas_municipales.repository.ReservationRepository;
 import cr.una.reservas_municipales.repository.SpaceRepository;
 import cr.una.reservas_municipales.repository.SpaceScheduleRepository;
 import cr.una.reservas_municipales.repository.UserRepository;
+import cr.una.reservas_municipales.notification.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -34,6 +36,7 @@ public class ReservationService {
     private final UserRepository userRepository;
     private final SpaceScheduleRepository spaceScheduleRepository;
     private final QRCodeService qrCodeService;
+    private final NotificationSender notificationSender;
     
     @Value("${app.reservations.cancellation.min-hours-before:24}")
     private long minHoursBeforeCancellation;
@@ -154,6 +157,23 @@ public class ReservationService {
         Reservation saved = reservationRepository.save(reservation);
         log.info("Reserva creada exitosamente con ID: {}", saved.getReservationId());
         
+        var user  = userRepository.findById(saved.getUserId()).orElse(null);
+        var space = spaceRepository.findById(saved.getSpaceId()).orElse(null);
+        if (user != null && space != null) {
+            notificationSender.send(NotificationEvent.builder()
+                .type(NotificationType.RESERVATION_CREATED)
+                .reservationId(saved.getReservationId())
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .data(Map.of(
+                    "spaceName", space.getName(),
+                    "startsAt",  saved.getStartsAt(),
+                    "endsAt",    saved.getEndsAt()
+                ))
+                .occurredAt(OffsetDateTime.now())
+                .build());
+        }
+        
         return convertToDto(saved);
     }
     
@@ -163,6 +183,7 @@ public class ReservationService {
         
         return reservationRepository.findById(id)
                 .map(existingReservation -> {
+                String oldStatus = existingReservation.getStatus();
                 // Verificar conflictos de horario solo si se cambian las fechas
                 if (reservationDto.getStartsAt() != null && reservationDto.getEndsAt() != null) {
                     // Validar que la fecha de fin sea posterior a la de inicio
@@ -213,6 +234,27 @@ public class ReservationService {
                     Reservation updated = reservationRepository.save(existingReservation);
                     log.info("Reserva actualizada exitosamente: {}", updated.getReservationId());
                     
+                    if (reservationDto.getStatus() != null && !oldStatus.equals(reservationDto.getStatus())) {
+                        var user  = userRepository.findById(updated.getUserId()).orElse(null);
+                        var space = spaceRepository.findById(updated.getSpaceId()).orElse(null);
+                        if (user != null && space != null) {
+                            notificationSender.send(NotificationEvent.builder()
+                                .type(NotificationType.RESERVATION_STATUS_CHANGED)
+                                .reservationId(updated.getReservationId())
+                                .userId(user.getUserId())
+                                .email(user.getEmail())
+                                .data(Map.of(
+                                    "oldStatus", oldStatus,
+                                    "newStatus", updated.getStatus(),
+                                    "spaceName", space.getName(),
+                                    "startsAt",  updated.getStartsAt(),
+                                    "endsAt",    updated.getEndsAt()
+                                ))
+                                .occurredAt(OffsetDateTime.now())
+                                .build());
+                        }
+                    }
+                    
                     return convertToDto(updated);
                 })
                 .orElse(null);
@@ -258,6 +300,25 @@ public class ReservationService {
                     
                     reservationRepository.save(reservation);
                     log.info("Reserva cancelada exitosamente: {} (por {})", id, currentUserRole);
+                    
+                    var user  = userRepository.findById(reservation.getUserId()).orElse(null);
+                    var space = spaceRepository.findById(reservation.getSpaceId()).orElse(null);
+                    if (user != null && space != null) {
+                        notificationSender.send(NotificationEvent.builder()
+                            .type(NotificationType.RESERVATION_CANCELLED)
+                            .reservationId(reservation.getReservationId())
+                            .userId(user.getUserId())
+                            .email(user.getEmail())
+                            .data(Map.of(
+                                "reason",    cancelReason == null ? "(sin motivo)" : cancelReason,
+                                "spaceName", space.getName(),
+                                "startsAt",  reservation.getStartsAt(),
+                                "endsAt",    reservation.getEndsAt()
+                            ))
+                            .occurredAt(OffsetDateTime.now())
+                            .build());
+                    }
+                    
                     return true;
                 })
                 .orElse(false);
@@ -370,6 +431,23 @@ public class ReservationService {
                         reservationRepository.save(reservation);
                         
                         log.info("Attendance confirmed for reservation: {}", reservationId);
+                        
+                        var user  = userRepository.findById(reservation.getUserId()).orElse(null);
+                        var space = spaceRepository.findById(reservation.getSpaceId()).orElse(null);
+                        if (user != null && space != null) {
+                            notificationSender.send(NotificationEvent.builder()
+                                .type(NotificationType.QR_VALIDATED)
+                                .reservationId(reservationId)
+                                .userId(user.getUserId())
+                                .email(user.getEmail())
+                                .data(Map.of(
+                                    "spaceName", space.getName(),
+                                    "startsAt",  reservation.getStartsAt()
+                                ))
+                                .occurredAt(OffsetDateTime.now())
+                                .build());
+                        }
+                        
                         return new QRValidationDto(reservationId, true, "Asistencia confirmada exitosamente");
                         
                     } catch (Exception e) {
