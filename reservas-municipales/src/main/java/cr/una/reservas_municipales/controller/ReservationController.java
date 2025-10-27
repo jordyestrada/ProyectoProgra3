@@ -1,22 +1,28 @@
 package cr.una.reservas_municipales.controller;
 
 import cr.una.reservas_municipales.dto.ReservationDto;
+import cr.una.reservas_municipales.dto.ReservationSummaryDto;
+import cr.una.reservas_municipales.dto.ReservationWithSpaceDto;
 import cr.una.reservas_municipales.dto.QRValidationDto;
 import cr.una.reservas_municipales.exception.CancellationNotAllowedException;
+import cr.una.reservas_municipales.model.User;
+import cr.una.reservas_municipales.repository.UserRepository;
 import cr.una.reservas_municipales.service.ReservationService;
+import cr.una.reservas_municipales.service.ReservationExportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +35,8 @@ import java.util.UUID;
 public class ReservationController {
     
     private final ReservationService reservationService;
+    private final ReservationExportService reservationExportService;
+    private final UserRepository userRepository;
     
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
@@ -332,6 +340,93 @@ public class ReservationController {
             
         } catch (Exception e) {
             log.error("Error getting QR image for reservation: " + id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    // ===== ENDPOINTS EXPORTACIÓN EXCEL =====
+    
+    /**
+     * GET /api/reservations/export/excel - Exportar reservas del usuario autenticado a Excel
+     */
+    @GetMapping("/export/excel")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
+    public ResponseEntity<byte[]> exportUserReservationsToExcel(Authentication authentication) {
+        log.info("GET /api/reservations/export/excel - Exportando reservas del usuario autenticado");
+        
+        try {
+            String userEmail = authentication.getName();
+            log.info("Usuario solicitando exportación: {}", userEmail);
+            
+            // Obtener el usuario por email
+            User user = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userEmail));
+            
+            // Obtener reservas con detalles del espacio
+            List<ReservationWithSpaceDto> reservations = reservationService.getReservationsByUserWithSpaceDetails(user.getUserId());
+            
+            // Generar resumen estadístico
+            ReservationSummaryDto summary = reservationService.generateReservationSummary(user.getUserId());
+            
+            // Generar archivo Excel
+            byte[] excelBytes = reservationExportService.generateReservationsExcel(reservations, summary);
+            
+            String filename = "reservas_" + user.getFullName().replaceAll("\\s+", "_") + "_" + 
+                            OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".xlsx";
+            
+            log.info("Reporte Excel generado exitosamente para usuario: {}, {} reservas", 
+                    user.getFullName(), reservations.size());
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .body(excelBytes);
+            
+        } catch (Exception e) {
+            log.error("Error exportando reservas del usuario autenticado", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * GET /api/reservations/export/excel/{userId} - Exportar reservas de un usuario específico (Admin/Supervisor)
+     */
+    @GetMapping("/export/excel/{userId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
+    public ResponseEntity<byte[]> exportUserReservationsToExcelByUserId(@PathVariable UUID userId, 
+                                                                        Authentication authentication) {
+        log.info("GET /api/reservations/export/excel/{} - Exportando reservas por admin/supervisor", userId);
+        
+        try {
+            String requestingUserEmail = authentication.getName();
+            log.info("Admin/Supervisor {} solicitando exportación de usuario: {}", requestingUserEmail, userId);
+            
+            // Verificar que el usuario objetivo existe
+            User targetUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userId));
+            
+            // Obtener reservas con detalles del espacio
+            List<ReservationWithSpaceDto> reservations = reservationService.getReservationsByUserWithSpaceDetails(userId);
+            
+            // Generar resumen estadístico
+            ReservationSummaryDto summary = reservationService.generateReservationSummary(userId);
+            
+            // Generar archivo Excel
+            byte[] excelBytes = reservationExportService.generateReservationsExcel(reservations, summary);
+            
+            String filename = "reservas_" + targetUser.getFullName().replaceAll("\\s+", "_") + "_" + 
+                            OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".xlsx";
+            
+            log.info("Reporte Excel generado exitosamente por {} para usuario: {}, {} reservas", 
+                    requestingUserEmail, targetUser.getFullName(), reservations.size());
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .body(excelBytes);
+            
+        } catch (Exception e) {
+            log.error("Error exportando reservas del usuario: " + userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

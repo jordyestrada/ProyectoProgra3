@@ -1,11 +1,14 @@
 package cr.una.reservas_municipales.service;
 
 import cr.una.reservas_municipales.dto.ReservationDto;
+import cr.una.reservas_municipales.dto.ReservationSummaryDto;
+import cr.una.reservas_municipales.dto.ReservationWithSpaceDto;
 import cr.una.reservas_municipales.dto.QRValidationDto;
 import cr.una.reservas_municipales.exception.BusinessException;
 import cr.una.reservas_municipales.exception.CancellationNotAllowedException;
 import cr.una.reservas_municipales.model.Reservation;
 import cr.una.reservas_municipales.model.SpaceSchedule;
+import cr.una.reservas_municipales.model.User;
 import cr.una.reservas_municipales.repository.ReservationRepository;
 import cr.una.reservas_municipales.repository.SpaceRepository;
 import cr.una.reservas_municipales.repository.SpaceScheduleRepository;
@@ -17,12 +20,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -570,5 +575,106 @@ public class ReservationService {
             case 6 -> "sábado";
             default -> "día desconocido";
         };
+    }
+    
+    /**
+     * Obtiene las reservas de un usuario con información detallada del espacio
+     */
+    @Transactional(readOnly = true)
+    public List<ReservationWithSpaceDto> getReservationsByUserWithSpaceDetails(UUID userId) {
+        log.info("Obteniendo reservas con detalles de espacio para usuario: {}", userId);
+        
+        List<Reservation> reservations = reservationRepository.findByUserIdOrderByStartsAtDesc(userId);
+        
+        return reservations.stream()
+                .map(this::convertToReservationWithSpaceDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Genera un resumen estadístico de las reservas de un usuario
+     */
+    @Transactional(readOnly = true)
+    public ReservationSummaryDto generateReservationSummary(UUID userId) {
+        log.info("Generando resumen de reservas para usuario: {}", userId);
+        
+        List<Reservation> reservations = reservationRepository.findByUserIdOrderByStartsAtDesc(userId);
+        
+        // Obtener información del usuario
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        
+        // Calcular estadísticas
+        long totalReservations = reservations.size();
+        long confirmedReservations = reservations.stream()
+                .filter(r -> "CONFIRMED".equals(r.getStatus()))
+                .count();
+        long cancelledReservations = reservations.stream()
+                .filter(r -> "CANCELLED".equals(r.getStatus()))
+                .count();
+        long pendingReservations = reservations.stream()
+                .filter(r -> "PENDING".equals(r.getStatus()))
+                .count();
+        long completedReservations = reservations.stream()
+                .filter(r -> "COMPLETED".equals(r.getStatus()))
+                .count();
+        
+        // Calcular total de dinero pagado (solo reservas confirmadas o completadas)
+        BigDecimal totalAmountPaid = reservations.stream()
+                .filter(r -> "CONFIRMED".equals(r.getStatus()) || "COMPLETED".equals(r.getStatus()))
+                .map(Reservation::getTotalAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // Obtener moneda más común
+        String currency = reservations.stream()
+                .map(Reservation::getCurrency)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse("CRC");
+        
+        return ReservationSummaryDto.builder()
+                .totalReservations(totalReservations)
+                .confirmedReservations(confirmedReservations)
+                .cancelledReservations(cancelledReservations)
+                .pendingReservations(pendingReservations)
+                .completedReservations(completedReservations)
+                .totalAmountPaid(totalAmountPaid)
+                .currency(currency)
+                .userName(user.getFullName())
+                .userEmail(user.getEmail())
+                .build();
+    }
+    
+    /**
+     * Convierte una entidad Reservation a ReservationWithSpaceDto incluyendo información del espacio
+     */
+    private ReservationWithSpaceDto convertToReservationWithSpaceDto(Reservation reservation) {
+        ReservationWithSpaceDto dto = new ReservationWithSpaceDto();
+        
+        // Datos de la reserva
+        dto.setReservationId(reservation.getReservationId());
+        dto.setSpaceId(reservation.getSpaceId());
+        dto.setUserId(reservation.getUserId());
+        dto.setStartsAt(reservation.getStartsAt());
+        dto.setEndsAt(reservation.getEndsAt());
+        dto.setStatus(reservation.getStatus());
+        dto.setCancelReason(reservation.getCancelReason());
+        dto.setRateId(reservation.getRateId());
+        dto.setTotalAmount(reservation.getTotalAmount());
+        dto.setCurrency(reservation.getCurrency());
+        dto.setCreatedAt(reservation.getCreatedAt());
+        dto.setUpdatedAt(reservation.getUpdatedAt());
+        
+        // Obtener información del espacio
+        spaceRepository.findById(reservation.getSpaceId()).ifPresent(space -> {
+            dto.setSpaceName(space.getName());
+            dto.setSpaceLocation(space.getLocation());
+            dto.setSpaceDescription(space.getDescription());
+            dto.setSpaceCapacity(space.getCapacity());
+            dto.setSpaceOutdoor(space.isOutdoor());
+        });
+        
+        return dto;
     }
 }

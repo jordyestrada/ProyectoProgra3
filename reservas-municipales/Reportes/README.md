@@ -205,6 +205,57 @@ PATCH http://localhost:8080/api/reservations/{id}/cancel?reason=Usuario no puede
 DELETE http://localhost:8080/api/reservations/{id}
 ```
 
+### 📊 Exportar reservas a Excel (Usuario autenticado)
+**El usuario exporta sus propias reservas**
+```
+GET http://localhost:8080/api/reservations/export/excel
+Authorization: Bearer [token]
+```
+
+**Response:**
+- Content-Type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- Content-Disposition: `attachment; filename="reservas_[usuario]_[fecha].xlsx"`
+- Archivo Excel con dos hojas:
+  - **Hoja 1 "Reservaciones"**: Tabla con todas las reservas del usuario
+  - **Hoja 2 "Resumen"**: Estadísticas y totales
+
+### 📊 Exportar reservas a Excel (Admin/Supervisor)
+**Admin o Supervisor puede exportar reservas de cualquier usuario**
+```
+GET http://localhost:8080/api/reservations/export/excel/{userId}
+Authorization: Bearer [token]
+```
+
+**Ejemplo:**
+```
+GET http://localhost:8080/api/reservations/export/excel/550e8400-e29b-41d4-a716-446655440002
+Authorization: Bearer [admin_token]
+```
+
+**Response:**
+- Mismo formato que el endpoint anterior
+- Solo usuarios con rol `ADMIN` o `SUPERVISOR` pueden acceder
+- Permite consultar las reservas de cualquier usuario del sistema
+
+**Columnas del Excel:**
+- ID Reserva
+- Espacio
+- Fecha Inicio
+- Fecha Fin
+- Estado de la Reserva
+- Monto Total
+- Moneda
+- Fecha Creación
+- Observaciones
+
+**Estadísticas incluidas:**
+- Total de reservas
+- Reservas confirmadas
+- Reservas canceladas
+- Reservas pendientes
+- Reservas completadas
+- Total de dinero pagado
+
 ### 📱 Obtener código QR (JSON con Base64)
 ```
 GET http://localhost:8080/api/reservations/{id}/qr
