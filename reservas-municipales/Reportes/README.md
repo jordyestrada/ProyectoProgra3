@@ -495,3 +495,184 @@ Authorization: Bearer [token]
 - ✅ Si el espacio NO tiene horarios, permite cualquier horario (backward compatible)
 - ✅ La reserva debe estar completamente dentro de un bloque horario
 - ✅ Mensajes de error descriptivos en español
+
+---
+
+## WeatherController - Información del Clima para Espacios al Aire Libre
+
+### Obtener clima para un espacio específico
+**Consulta el clima para espacios al aire libre. Solo funciona con espacios que tengan `outdoor: true`.**
+
+```
+GET http://localhost:8080/api/weather/space/{spaceId}
+Authorization: Bearer [token]
+```
+
+**Ejemplo:**
+```
+GET http://localhost:8080/api/weather/space/21056e13-415e-486c-9fd6-94d5f6af08e8
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+```
+
+**Response exitoso (200 OK):**
+```json
+{
+  "location": "Parque Central",
+  "temperature": 28.5,
+  "feels_like": 32.1,
+  "description": "cielo claro",
+  "humidity": 74,
+  "wind_speed": 2.57,
+  "cloudiness": 20,
+  "rain_probability": 15.0,
+  "is_outdoor_friendly": true,
+  "recommendation": "Condiciones ideales para actividades al aire libre. ¡Disfruta tu reserva!",
+  "data_source": "API",
+  "fetched_at": "2025-10-28T10:30:00-06:00",
+  "latitude": 9.9333,
+  "longitude": -84.0833
+}
+```
+
+**Criterios para "condiciones aptas" (`is_outdoor_friendly: true`):**
+- ✅ Temperatura entre 15°C y 30°C
+- ✅ Probabilidad de lluvia < 30%
+- ✅ Velocidad del viento < 10 m/s
+
+**Errores comunes:**
+
+**404 Not Found** (Espacio no existe):
+```json
+{
+  "error": "Espacio no encontrado",
+  "message": "Espacio no encontrado con ID: 21056e13-415e-486c-9fd6-94d5f6af08e8",
+  "timestamp": "2025-10-28T10:30:00-06:00"
+}
+```
+
+**400 Bad Request** (Espacio interior):
+```json
+{
+  "error": "Espacio interior",
+  "message": "El espacio 'Salón de Eventos' es interior y no requiere información del clima",
+  "timestamp": "2025-10-28T10:30:00-06:00"
+}
+```
+
+**503 Service Unavailable** (API del clima caída):
+```json
+{
+  "location": "Parque Central",
+  "temperature": 0.0,
+  "description": "Información del clima no disponible",
+  "is_outdoor_friendly": false,
+  "recommendation": "No se pudo obtener información del clima. Por favor, intente más tarde.",
+  "data_source": "FALLBACK",
+  "fetched_at": "2025-10-28T10:30:00-06:00"
+}
+```
+
+### Obtener clima por ubicación/ciudad
+**Consulta el clima para cualquier ciudad del mundo.**
+
+```
+GET http://localhost:8080/api/weather/location?location={ciudad}
+Authorization: Bearer [token]
+```
+
+**Ejemplos:**
+```
+GET http://localhost:8080/api/weather/location?location=San Jose,CR
+GET http://localhost:8080/api/weather/location?location=Cartago,CR
+GET http://localhost:8080/api/weather/location?location=Madrid,ES
+```
+
+**Response (200 OK):**
+```json
+{
+  "location": "San Jose,CR",
+  "temperature": 27.3,
+  "feels_like": 30.8,
+  "description": "nubes dispersas",
+  "humidity": 68,
+  "wind_speed": 3.2,
+  "cloudiness": 40,
+  "rain_probability": 20.0,
+  "is_outdoor_friendly": true,
+  "recommendation": "Condiciones ideales para actividades al aire libre. ¡Disfruta tu reserva!",
+  "data_source": "API",
+  "fetched_at": "2025-10-28T10:35:00-06:00",
+  "latitude": 9.9281,
+  "longitude": -84.0907
+}
+```
+
+**Formato del parámetro `location`:**
+- `"Ciudad,PaísISO"` (ej: `"San Jose,CR"`, `"London,GB"`)
+- `"Ciudad"` (ej: `"Madrid"` - si es única)
+- Códigos ISO de país: CR (Costa Rica), US (Estados Unidos), ES (España), etc.
+
+**Error si la ubicación no existe (400 Bad Request):**
+```json
+{
+  "error": "WEATHER_API_ERROR",
+  "message": "No se pudieron obtener coordenadas para: CiudadInvalida",
+  "timestamp": "2025-10-28T10:40:00-06:00"
+}
+```
+
+### Health check del servicio (Solo ADMIN)
+**Verifica el estado de la conexión con la API del clima.**
+
+```
+GET http://localhost:8080/api/weather/health
+Authorization: Bearer [admin_token]
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "UP",
+  "service": "Weather API Integration",
+  "healthy": true,
+  "timestamp": "2025-10-28T10:45:00-06:00"
+}
+```
+
+**Response si la API falla (200 OK - con estado DOWN):**
+```json
+{
+  "status": "DOWN",
+  "service": "Weather API Integration",
+  "healthy": false,
+  "timestamp": "2025-10-28T10:45:00-06:00"
+}
+```
+
+---
+
+## Características del Sistema de Clima
+
+### Cache automático
+- **Duración**: 5 minutos (300 segundos)
+- **Beneficio**: Reduce llamadas a la API externa y mejora tiempos de respuesta
+- **Tamaño máximo**: 500 entradas en memoria
+
+### Tolerancia a fallos (Resilience4j)
+- **Retry**: Reintenta hasta 3 veces con backoff exponencial (500ms, 1s, 2s)
+- **Circuit Breaker**: Si 50% de las requests fallan, abre el circuito por 30s
+- **Fallback**: Si falla todo, retorna datos genéricos (temp 0°C, "no disponible")
+- **Timeout**: Cancela requests que tarden más de 2 segundos
+
+### Fuentes de datos (`data_source`)
+- **`API`**: Datos obtenidos de OpenWeatherMap en tiempo real
+- **`CACHE`**: Datos servidos desde cache (no visible en response, pero más rápido)
+- **`FALLBACK`**: Datos genéricos cuando la API falla
+
+### API externa utilizada
+- **Proveedor**: OpenWeatherMap One Call API 3.0
+- **URL base**: `https://api.openweathermap.org/data/3.0`
+- **Documentación**: https://openweathermap.org/api/one-call-3
+- **Límite gratuito**: 1,000 requests/día
+- **Unidades**: Métricas (Celsius, m/s, %)
+- **Idioma**: Español (descripciones en español)

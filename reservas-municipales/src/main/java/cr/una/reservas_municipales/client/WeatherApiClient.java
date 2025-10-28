@@ -8,6 +8,7 @@ import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -32,7 +33,9 @@ public class WeatherApiClient {
     private final WeatherApiProperties weatherApiProperties;
 
     private static final String ONECALL_ENDPOINT = "/onecall";
-    private static final String GEOCODING_BASE_URL = "http://api.openweathermap.org/geo/1.0";
+    
+    @Value("${weather.api.geocoding-url}")
+    private String geocodingBaseUrl;
     
     /**
      * Obtiene información del clima por coordenadas geográficas
@@ -139,7 +142,7 @@ public class WeatherApiClient {
     private Map<String, Double> getCoordinatesByLocation(String location) {
         try {
             WebClient geocodingClient = WebClient.builder()
-                    .baseUrl(GEOCODING_BASE_URL)
+                    .baseUrl(geocodingBaseUrl)
                     .build();
             
             List<Map<String, Object>> response = geocodingClient
