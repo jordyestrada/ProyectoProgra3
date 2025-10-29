@@ -8,17 +8,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -32,15 +27,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response, 
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        String jwt = getJwtFromRequest(request);
+        // A. Salta las rutas públicas de auth antes de tocar el header
+        String path = request.getRequestURI();
+        if (path.startsWith("/api/auth/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-        if (StringUtils.hasText(jwt) && jwtService.validateToken(jwt)) {
-            String username = jwtService.getUsernameFromToken(jwt);
-            String authoritiesString = jwtService.getAuthoritiesFromToken(jwt);
+        // B. Solo procesa si hay Authorization: Bearer
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        String token = authHeader.substring(7);
+
+        // Valida el token
+        if (jwtService.validateToken(token)) {
+            String username = jwtService.getUsernameFromToken(token);
             
-            List<SimpleGrantedAuthority> authorities = Arrays.stream(authoritiesString.split(","))
-                    .map(SimpleGrantedAuthority::new)
-                    .collect(Collectors.toList());
+            // C. Extraer autoridades sin NPE y soportando String o Lista
+            io.jsonwebtoken.Claims claims = jwtService.getClaimsFromToken(token);
+            Object rawAuth = claims.get("authorities");
+            if (rawAuth == null) rawAuth = claims.get("roles"); // tolera 'roles' si algún token lo usa
+
+            java.util.List<String> roles;
+            if (rawAuth == null) {
+                roles = java.util.List.of(); // sin roles
+            } else if (rawAuth instanceof String s) {
+                roles = java.util.Arrays.stream(s.split(","))
+                        .map(String::trim)
+                        .filter(r -> !r.isEmpty())
+                        .toList();
+            } else if (rawAuth instanceof java.util.Collection<?> c) {
+                roles = c.stream().map(Object::toString).toList();
+            } else {
+                roles = java.util.List.of();
+            }
+
+            var authorities = roles.stream()
+                    .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
+                    .toList();
 
             UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(username, null, authorities);
@@ -50,13 +77,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    private String getJwtFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
     }
 }

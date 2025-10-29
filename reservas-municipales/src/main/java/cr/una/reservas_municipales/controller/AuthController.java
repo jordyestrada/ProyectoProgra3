@@ -29,7 +29,6 @@ public class AuthController {
             log.debug("Raw request body: {}", rawBody);
             log.debug("Content-Type header: {}", request.getHeader("Content-Type"));
             
-            // Manually parse the JSON for now
             ObjectMapper mapper = new ObjectMapper();
             LoginRequest loginRequest = mapper.readValue(rawBody, LoginRequest.class);
             
@@ -37,6 +36,10 @@ public class AuthController {
                 loginRequest.getEmail(), 
                 loginRequest.getPassword() != null ? "YES" : "NO",
                 loginRequest.getAzureToken() != null ? "YES" : "NO");
+            
+            if (loginRequest.getAzureToken() != null && !loginRequest.getAzureToken().isBlank()) {
+                return ResponseEntity.ok(authenticationService.loginWithAzure(loginRequest.getAzureToken()));
+            }
             
             JwtResponse jwtResponse = authenticationService.authenticateUser(loginRequest);
             return ResponseEntity.ok(jwtResponse);

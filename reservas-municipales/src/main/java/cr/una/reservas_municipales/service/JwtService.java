@@ -53,7 +53,8 @@ public class JwtService {
         Date expiryDate = new Date(now.getTime() + jwtProperties.getExpiration());
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put("authorities", authorities);
+        // Mejor en lista para evitar ambigüedad
+        claims.put("authorities", java.util.List.of(authorities));
 
         return Jwts.builder()
                 .claims(claims)
@@ -81,6 +82,14 @@ public class JwtService {
                 .parseSignedClaims(token)
                 .getPayload();
         return claims.get("authorities", String.class);
+    }
+
+    public Claims getClaimsFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     public boolean validateToken(String token) {

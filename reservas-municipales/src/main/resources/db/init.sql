@@ -229,4 +229,15 @@ ALTER TABLE review
   ADD CONSTRAINT fk_review_reservation
   FOREIGN KEY (reservation_id) REFERENCES reservation(reservation_id) ON DELETE SET NULL;
 
+-- =========================
+-- Datos iniciales básicos
+-- =========================
+
+-- Roles básicos (necesarios para autenticación Azure AD)
+INSERT INTO role (code, name) VALUES
+('ADMIN', 'Administrador'),
+('SUPERVISOR', 'Supervisor'),
+('USER', 'Usuario')
+ON CONFLICT (code) DO NOTHING;
+
 COMMIT;
