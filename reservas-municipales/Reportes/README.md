@@ -328,6 +328,12 @@ GET http://localhost:8080/api/reviews/space/[id]/statistics
 ```
 
 ### Crear reseña
+**⚠️ RESTRICCIONES POST-USO:**
+- Solo se pueden crear reseñas de reservas con estado **CONFIRMED** o **COMPLETED**
+- La reseña solo puede crearse **después** de que pase la fecha de fin de la reserva
+- Solo el usuario que realizó la reserva puede reseñar ese espacio
+- No se puede crear más de una reseña por reserva
+
 ```
 POST http://localhost:8080/api/reviews
 Content-Type: application/json
@@ -339,6 +345,50 @@ Content-Type: application/json
     "rating": 5,
     "comment": "Excelente espacio, muy limpio y bien equipado",
     "visible": true
+}
+```
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+    "reviewId": 1,
+    "spaceId": "uuid-espacio",
+    "userId": "uuid-usuario",
+    "reservationId": "uuid-reserva",
+    "rating": 5,
+    "comment": "Excelente espacio, muy limpio y bien equipado",
+    "visible": true,
+    "createdAt": "2025-11-01T14:30:00-06:00"
+}
+```
+
+**Errores comunes:**
+
+**Estado de reserva inválido (400 Bad Request):**
+```json
+{
+    "error": "Solo se pueden reseñar espacios de reservas confirmadas o completadas. Estado actual: PENDING"
+}
+```
+
+**Reseña antes de usar el espacio (400 Bad Request):**
+```json
+{
+    "error": "Solo se puede reseñar un espacio después de haber usado la reserva. La reserva finaliza el: 25/10/2025 16:00"
+}
+```
+
+**Usuario no autorizado (400 Bad Request):**
+```json
+{
+    "error": "Solo el usuario que realizó la reserva puede hacer una reseña de este espacio"
+}
+```
+
+**Reseña duplicada (400 Bad Request):**
+```json
+{
+    "error": "Ya existe una reseña para esta reserva"
 }
 ```
 

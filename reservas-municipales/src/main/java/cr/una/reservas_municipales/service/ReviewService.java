@@ -2,6 +2,7 @@ package cr.una.reservas_municipales.service;
 
 import cr.una.reservas_municipales.dto.ReviewDto;
 import cr.una.reservas_municipales.model.ReviewEntity;
+import cr.una.reservas_municipales.model.Reservation;
 import cr.una.reservas_municipales.repository.ReviewRepository;
 import cr.una.reservas_municipales.repository.SpaceRepository;
 import cr.una.reservas_municipales.repository.UserRepository;
@@ -94,8 +95,32 @@ public class ReviewService {
         
         // Validar que la reserva existe (si se proporciona)
         if (reviewDto.getReservationId() != null) {
-            if (!reservationRepository.existsById(reviewDto.getReservationId())) {
-                throw new RuntimeException("La reserva especificada no existe");
+            Reservation reservation = reservationRepository.findById(reviewDto.getReservationId())
+                    .orElseThrow(() -> new RuntimeException("La reserva especificada no existe"));
+            
+            // VALIDACIÓN POST-USO: Solo se puede reseñar si la reserva está confirmada o completada
+            if (!"CONFIRMED".equals(reservation.getStatus()) && !"COMPLETED".equals(reservation.getStatus())) {
+                throw new RuntimeException(
+                    "Solo se pueden reseñar espacios de reservas confirmadas o completadas. " +
+                    "Estado actual: " + reservation.getStatus()
+                );
+            }
+            
+            // VALIDACIÓN POST-USO: Solo se puede reseñar después de que pase la fecha de fin de la reserva
+            if (reservation.getEndsAt().isAfter(java.time.OffsetDateTime.now())) {
+                throw new RuntimeException(
+                    "Solo se puede reseñar un espacio después de haber usado la reserva. " +
+                    "La reserva finaliza el: " + reservation.getEndsAt().format(
+                        java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                    )
+                );
+            }
+            
+            // Verificar que el usuario de la reseña es el mismo que hizo la reserva
+            if (!reservation.getUserId().equals(reviewDto.getUserId())) {
+                throw new RuntimeException(
+                    "Solo el usuario que realizó la reserva puede hacer una reseña de este espacio"
+                );
             }
             
             // Verificar que no existe ya una reseña para esta reserva
