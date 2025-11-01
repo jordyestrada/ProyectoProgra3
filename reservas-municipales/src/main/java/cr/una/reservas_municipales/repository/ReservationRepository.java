@@ -63,4 +63,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
     
     // Obtener reservas que comienzan en un rango (para análisis por día/hora)
     List<Reservation> findByStartsAtBetween(OffsetDateTime start, OffsetDateTime end);
+    
+    // ============ MÉTODOS PARA AUTO-CANCELACIÓN ============
+    
+    // Encontrar reservas pendientes cuya hora de inicio ya pasó (optimizado)
+    @Query("SELECT r FROM Reservation r WHERE r.status = 'PENDING' AND r.startsAt < :currentTime")
+    List<Reservation> findExpiredPendingReservations(@Param("currentTime") OffsetDateTime currentTime);
 }

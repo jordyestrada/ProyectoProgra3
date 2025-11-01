@@ -205,6 +205,31 @@ PATCH http://localhost:8080/api/reservations/{id}/cancel?reason=Usuario no puede
 DELETE http://localhost:8080/api/reservations/{id}
 ```
 
+### ⏰ Auto-cancelación de Reservas Pendientes
+**El sistema cancela automáticamente las reservas pendientes que no se confirman a tiempo.**
+
+**Comportamiento automático:**
+- ✅ Se ejecuta cada **5 minutos** en segundo plano
+- ✅ Busca reservas con estado `PENDING` cuya hora de inicio ya pasó
+- ✅ Cambia automáticamente el estado a `CANCELLED`
+- ✅ Agrega un motivo de cancelación descriptivo con la fecha/hora
+- ✅ Logs detallados para auditoría
+
+**Ejemplo de motivo de cancelación automática:**
+```
+"Cancelada automáticamente - No se confirmó antes de la hora de inicio (25/10/2025 14:00)"
+```
+
+**Estados del flujo de vida de una reserva:**
+1. **PENDING** → Recién creada, esperando confirmación
+2. **CONFIRMED** → Confirmada por el usuario/admin
+3. **CANCELLED** → Cancelada manualmente o automáticamente
+4. **COMPLETED** → Reserva utilizada y finalizada
+
+**Regla importante:**
+- Si una reserva está en `PENDING` y pasa su hora de inicio sin confirmarse → Se cancela automáticamente
+- Las reservas `CONFIRMED` NO se cancelan automáticamente
+
 ### 📊 Exportar reservas a Excel (Usuario autenticado)
 **El usuario exporta sus propias reservas**
 ```
