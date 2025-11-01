@@ -751,3 +751,45 @@ Authorization: Bearer [admin_token]
 - **Límite gratuito**: 1,000 requests/día
 - **Unidades**: Métricas (Celsius, m/s, %)
 - **Idioma**: Español (descripciones en español)
+
+---
+
+## Tests Unitarios
+
+### Comando para ejecutar todos los tests
+```powershell
+.\mvnw.cmd test
+```
+
+### Estado de Tests (132/132 implementados - 100%)
+
+#### ✅ Tests de Servicios Implementados
+- ✅ AuthenticationServiceTest (3 tests)
+- ✅ AzureAdServiceTest (1 test)
+- ✅ DataInitializationServiceTest (8 tests)
+- ✅ FeatureServiceTest (1 test)
+- ✅ JwtServiceTest (7 tests)
+- ✅ MetricsServiceTest (6 tests)
+- ✅ QRCodeServiceTest (13 tests)
+- ✅ ReservationAutoStatusServiceTest (8 tests)
+- ✅ ReservationExportServiceTest (6 tests)
+- ✅ ReservationServiceTest (16 tests)
+- ✅ ReviewServiceTest (11 tests)
+- ✅ SpaceImageServiceTest (2 tests)
+- ✅ SpaceRateServiceTest (7 tests)
+- ✅ SpaceScheduleServiceTest (13 tests)
+- ✅ SpaceServiceTest (22 tests)
+- ✅ UserServiceTest (6 tests)
+- ✅ WeatherServiceTest (3 tests)
+- ✅ ReservasMunicipalesApplicationTests (1 test - integración)
+
+#### ❌ Tests de Controllers Pendientes
+- ❌ AuthControllerTest
+- ❌ DashboardControllerTest
+- ❌ ReservationControllerTest
+- ❌ ReviewControllerTest
+- ❌ SpaceControllerTest
+- ❌ SpaceScheduleControllerTest
+- ❌ UserControllerTest
+- ❌ WeatherControllerTest
+- ❌ PingControllerTest
