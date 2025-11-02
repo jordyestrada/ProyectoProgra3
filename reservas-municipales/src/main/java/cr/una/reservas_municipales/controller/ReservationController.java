@@ -39,7 +39,7 @@ public class ReservationController {
     private final UserRepository userRepository;
     
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<List<ReservationDto>> getAllReservations() {
         log.info("GET /api/reservations - Obteniendo todas las reservas");
         try {
@@ -52,7 +52,7 @@ public class ReservationController {
     }
     
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<ReservationDto> getReservationById(@PathVariable UUID id) {
         log.info("GET /api/reservations/{} - Obteniendo reserva por ID", id);
         try {
@@ -69,7 +69,7 @@ public class ReservationController {
     }
     
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<List<ReservationDto>> getReservationsByUser(@PathVariable UUID userId) {
         log.info("GET /api/reservations/user/{} - Obteniendo reservas por usuario", userId);
         try {
@@ -82,7 +82,7 @@ public class ReservationController {
     }
     
     @GetMapping("/space/{spaceId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<List<ReservationDto>> getReservationsBySpace(@PathVariable UUID spaceId) {
         log.info("GET /api/reservations/space/{} - Obteniendo reservas por espacio", spaceId);
         try {
@@ -108,7 +108,7 @@ public class ReservationController {
     }
     
     @GetMapping("/date-range")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<List<ReservationDto>> getReservationsInDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endDate) {
@@ -123,7 +123,7 @@ public class ReservationController {
     }
     
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<ReservationDto> createReservation(@Valid @RequestBody ReservationDto reservationDto) {
         log.info("POST /api/reservations - Creando nueva reserva");
         log.debug("Datos de la reserva: {}", reservationDto);
@@ -132,7 +132,7 @@ public class ReservationController {
     }
     
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<ReservationDto> updateReservation(@PathVariable UUID id, 
                                                            @Valid @RequestBody ReservationDto reservationDto) {
         log.info("PUT /api/reservations/{} - Actualizando reserva", id);
@@ -146,7 +146,7 @@ public class ReservationController {
     }
     
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<?> cancelReservation(
             @PathVariable UUID id, 
             @RequestParam(required = false) String reason,

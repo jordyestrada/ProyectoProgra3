@@ -82,10 +82,55 @@ Content-Type: application/json
 }
 ```
 
-### Eliminar espacio
+### Desactivar espacio (Soft Delete - RECOMENDADO)
+**Solo ADMIN - Marca el espacio como inactivo sin eliminarlo de la base de datos**
 ```
-DELETE http://localhost:8080/api/spaces/{id]
+DELETE http://localhost:8080/api/spaces/{id}
 ```
+
+**Response exitoso (200 OK):**
+```json
+{
+  "message": "Space deactivated successfully"
+}
+```
+
+**Características:**
+- ✅ NO elimina de la base de datos
+- ✅ Solo cambia `active = false`
+- ✅ Reversible: puede reactivarse
+- ✅ Mantiene datos históricos y reservas
+
+### Eliminar espacio permanentemente (Hard Delete - PELIGROSO)
+**Solo ADMIN - Elimina físicamente el espacio de la base de datos**
+```
+DELETE http://localhost:8080/api/spaces/{id}/permanent
+```
+
+**Response exitoso (200 OK):**
+```json
+{
+  "message": "Space permanently deleted"
+}
+```
+
+**Response bloqueado por reservas (409 CONFLICT):**
+```json
+{
+  "error": "Cannot delete space",
+  "message": "Cannot delete space: it has 5 associated reservation(s). Please deactivate instead."
+}
+```
+
+**⚠️ CARACTERÍSTICAS:**
+- ❌ BORRA PERMANENTEMENTE de la base de datos (DELETE físico)
+- ❌ NO reversible: los datos se pierden para siempre
+- ✅ Validación integrada: NO permite borrar si tiene reservas asociadas
+- ⚠️ Solo usar para limpiar espacios creados por error o pruebas
+
+**Cuándo usar cada uno:**
+- 🟢 **Soft Delete** (`/spaces/{id}`): Uso normal, cuando un espacio cierra temporalmente
+- 🔴 **Hard Delete** (`/spaces/{id}/permanent`): Solo para eliminar datos de prueba sin reservas
 
 ### Búsqueda avanzada de espacios
 ```
@@ -108,36 +153,43 @@ GET http://localhost:8080/api/spaces/available?startDate=2025-10-20T14:00:00-06:
 ## ReservationController
 
 ### Obtener todas las reservas
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 GET http://localhost:8080/api/reservations
 ```
 
 ### Obtener reserva por ID
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 GET http://localhost:8080/api/reservations/{id}
 ```
 
 ### Obtener reservas por usuario
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 GET http://localhost:8080/api/reservations/user/{userId}
 ```
 
 ### Obtener reservas por espacio
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
-GET {http://localhost:8080/api/reservations/space/spaceId}
+GET http://localhost:8080/api/reservations/space/{spaceId}
 ```
 
 ### Obtener reservas por estado
+**Roles permitidos: ADMIN**
 ```
 GET http://localhost:8080/api/reservations/status/{status}
 ```
 
 ### Obtener reservas en rango de fechas
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 GET http://localhost:8080/api/reservations/date-range?startDate=2025-10-20T00:00:00-06:00&endDate=2025-10-30T23:59:59-06:00
 ```
 
 ### Crear reserva
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 POST http://localhost:8080/api/reservations
 Content-Type: application/json
@@ -154,6 +206,7 @@ Content-Type: application/json
 ```
 
 ### Actualizar reserva
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 PUT http://localhost:8080/api/reservations/{id}
 Content-Type: application/json
@@ -167,6 +220,7 @@ Content-Type: application/json
 ```
 
 ### Cancelar reserva
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 **⚠️ RESTRICCIONES:**
 - Debe hacerse con al menos **24 horas** de anticipación (configurable en `application-docker.yml`).
 - Usuarios con rol **USER** solo pueden cancelar con 24+ horas de anticipación.
@@ -436,6 +490,122 @@ DELETE http://localhost:8080/api/reviews/[id]
 
 ---
 
+## UserController - Gestión de Usuarios
+
+### Obtener todos los usuarios
+```
+GET http://localhost:8080/api/users
+Authorization: Bearer [token]
+```
+
+### Obtener usuario por ID
+```
+GET http://localhost:8080/api/users/{id}
+Authorization: Bearer [token]
+```
+
+### Cambiar rol de usuario (Solo ADMIN)
+**Solo usuarios con rol ADMIN pueden cambiar roles de otros usuarios**
+**El sistema envía automáticamente un correo al usuario notificando el cambio**
+
+```
+PATCH http://localhost:8080/api/users/change-role
+Authorization: Bearer [admin_token]
+Content-Type: application/json
+
+{
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "roleCode": "ROLE_ADMIN"
+}
+```
+
+**Roles válidos:**
+- `ROLE_ADMIN` - Administrador con permisos completos
+- `ROLE_SUPERVISOR` - Supervisor con permisos de gestión
+- `ROLE_USER` - Usuario regular con permisos básicos
+
+**Response exitoso (200 OK):**
+```json
+{
+    "message": "Rol actualizado exitosamente",
+    "user": {
+        "userId": "550e8400-e29b-41d4-a716-446655440000",
+        "email": "user@test.com",
+        "fullName": "Usuario Test",
+        "phone": "88888888",
+        "active": true,
+        "roleCode": "ROLE_ADMIN"
+    }
+}
+```
+
+**Errores comunes:**
+
+**Usuario no encontrado (400 Bad Request):**
+```json
+{
+    "error": "Error al cambiar rol",
+    "message": "Usuario no encontrado con ID: 550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Rol no encontrado (400 Bad Request):**
+```json
+{
+    "error": "Error al cambiar rol",
+    "message": "Rol no encontrado: ROLE_INVALID"
+}
+```
+
+**Usuario ya tiene ese rol (400 Bad Request):**
+```json
+{
+    "error": "Error al cambiar rol",
+    "message": "El usuario ya tiene el rol: ROLE_ADMIN"
+}
+```
+
+**Sin permisos (403 Forbidden):**
+```json
+{
+    "error": "Access Denied",
+    "message": "You don't have permission to access this resource"
+}
+```
+
+**📧 Notificación por correo:**
+- ✅ Se envía automáticamente un email al usuario cuando su rol cambia
+- ✅ El email incluye el rol anterior y el nuevo rol
+- ✅ Se detallan los permisos del nuevo rol
+- ✅ Email con diseño HTML profesional y responsive
+- ✅ Si falla el envío del email, el cambio de rol se completa de todas formas
+
+**Permisos por rol:**
+
+**ROLE_ADMIN:**
+- Gestión completa de usuarios y roles
+- Administración de espacios y horarios
+- Gestión total de reservas
+- Acceso a dashboard y métricas
+- Cancelación sin restricciones de tiempo
+- Exportación de datos de cualquier usuario
+
+**ROLE_SUPERVISOR:**
+- Visualización y gestión de reservas
+- Gestión de horarios de espacios
+- Acceso a dashboard y métricas
+- Exportación de datos de usuarios
+- Validación de códigos QR
+
+**ROLE_USER:**
+- Crear y gestionar sus propias reservas
+- Consultar espacios disponibles
+- Crear reseñas de espacios utilizados
+- Exportar sus propias reservas
+- Ver y usar códigos QR de sus reservas
+
+---
+
 ## Estados válidos para reservas
 - PENDING
 - CONFIRMED
@@ -550,6 +720,11 @@ Content-Type: application/json
   "timeTo": "12:00:00"
 }
 ```
+
+**⏰ HORARIO POR DEFECTO:**
+- Si NO se especifica `timeFrom`: se usa **06:00 AM** por defecto
+- Si NO se especifica `timeTo`: se usa **08:00 PM** (20:00) por defecto
+- Esto facilita la creación rápida de horarios estándar
 
 **Días de la semana:** 0=Domingo, 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes, 6=Sábado
 

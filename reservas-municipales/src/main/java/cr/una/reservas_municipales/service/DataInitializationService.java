@@ -70,6 +70,7 @@ public class DataInitializationService implements CommandLineRunner {
         createUserIfNotExists("admin@test.com", "Administrador Test", "ADMIN");
         createUserIfNotExists("supervisor@test.com", "Supervisor Test", "SUPERVISOR");
         createUserIfNotExists("user@test.com", "Usuario Test", "USER");
+        createUserIfNotExists("harolah26@gmail.com", "Harold Admin", "ADMIN");
     }
 
     private void createUserIfNotExists(String email, String fullName, String roleCode) {

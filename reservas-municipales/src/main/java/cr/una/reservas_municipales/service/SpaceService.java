@@ -87,11 +87,22 @@ public class SpaceService {
 
     @Transactional
     public boolean deleteSpace(UUID id) {
-        if (spaceRepository.existsById(id)) {
-            spaceRepository.deleteById(id);
-            return true;
+        if (!spaceRepository.existsById(id)) {
+            return false;
         }
-        return false;
+        
+        // Validar que no tenga reservas asociadas
+        long reservationCount = reservationRepository.countBySpaceId(id);
+        if (reservationCount > 0) {
+            log.warn("Cannot delete space {} - has {} associated reservations", id, reservationCount);
+            throw new IllegalStateException(
+                String.format("Cannot delete space: it has %d associated reservation(s). Please deactivate instead.", reservationCount)
+            );
+        }
+        
+        log.info("Permanently deleting space {} (no reservations found)", id);
+        spaceRepository.deleteById(id);
+        return true;
     }
 
     public boolean existsByName(String name) {

@@ -227,6 +227,7 @@ public class SpaceController {
     /**
      * DELETE /api/spaces/{id}/permanent - Eliminar permanentemente
      * Solo ADMIN puede eliminar permanentemente (usar con cuidado)
+     * NO permite eliminar si tiene reservas asociadas
      */
     @DeleteMapping("/{id}/permanent")
     @PreAuthorize("hasRole('ADMIN')")
@@ -243,6 +244,13 @@ public class SpaceController {
                 log.warn("Space not found for permanent deletion: {}", id);
                 return ResponseEntity.notFound().build();
             }
+        } catch (IllegalStateException e) {
+            // Error de validación: tiene reservas asociadas
+            log.warn("Cannot delete space {}: {}", id, e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Cannot delete space");
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         } catch (Exception e) {
             log.error("Error permanently deleting space: {}", id, e);
             Map<String, String> error = new HashMap<>();

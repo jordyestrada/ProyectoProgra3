@@ -19,6 +19,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
     // Encontrar reservas por espacio
     List<Reservation> findBySpaceIdOrderByStartsAtDesc(UUID spaceId);
     
+    // Contar reservas por espacio (para validación de eliminación)
+    long countBySpaceId(UUID spaceId);
+    
     // Encontrar reservas por estado
     List<Reservation> findByStatusOrderByStartsAtDesc(String status);
     
