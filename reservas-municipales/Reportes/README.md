@@ -761,9 +761,9 @@ Authorization: Bearer [admin_token]
 .\mvnw.cmd test
 ```
 
-### Estado de Tests (132/132 implementados - 100%)
+### Estado de Tests (200/200 implementados - 100%)
 
-#### ✅ Tests de Servicios Implementados
+#### ✅ Tests de Servicios Implementados (132 tests)
 - ✅ AuthenticationServiceTest (3 tests)
 - ✅ AzureAdServiceTest (1 test)
 - ✅ DataInitializationServiceTest (8 tests)
@@ -783,13 +783,13 @@ Authorization: Bearer [admin_token]
 - ✅ WeatherServiceTest (3 tests)
 - ✅ ReservasMunicipalesApplicationTests (1 test - integración)
 
-#### ❌ Tests de Controllers Pendientes
-- ❌ AuthControllerTest
-- ❌ DashboardControllerTest
-- ❌ ReservationControllerTest
-- ❌ ReviewControllerTest
-- ❌ SpaceControllerTest
-- ❌ SpaceScheduleControllerTest
-- ❌ UserControllerTest
-- ❌ WeatherControllerTest
-- ❌ PingControllerTest
+#### ✅ Tests de Controllers Implementados (68 tests)
+- ✅ AuthControllerTest (9 tests)
+- ✅ DashboardControllerTest (3 tests)
+- ✅ PingControllerTest (2 tests)
+- ✅ ReservationControllerTest (17 tests)
+- ✅ ReviewControllerTest (8 tests)
+- ✅ SpaceControllerTest (16 tests)
+- ✅ SpaceScheduleControllerTest (5 tests)
+- ✅ UserControllerTest (4 tests)
+- ✅ WeatherControllerTest (4 tests)
