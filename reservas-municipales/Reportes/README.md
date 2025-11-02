@@ -490,6 +490,122 @@ DELETE http://localhost:8080/api/reviews/[id]
 
 ---
 
+## UserController - Gestión de Usuarios
+
+### Obtener todos los usuarios
+```
+GET http://localhost:8080/api/users
+Authorization: Bearer [token]
+```
+
+### Obtener usuario por ID
+```
+GET http://localhost:8080/api/users/{id}
+Authorization: Bearer [token]
+```
+
+### Cambiar rol de usuario (Solo ADMIN)
+**Solo usuarios con rol ADMIN pueden cambiar roles de otros usuarios**
+**El sistema envía automáticamente un correo al usuario notificando el cambio**
+
+```
+PATCH http://localhost:8080/api/users/change-role
+Authorization: Bearer [admin_token]
+Content-Type: application/json
+
+{
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "roleCode": "ROLE_ADMIN"
+}
+```
+
+**Roles válidos:**
+- `ROLE_ADMIN` - Administrador con permisos completos
+- `ROLE_SUPERVISOR` - Supervisor con permisos de gestión
+- `ROLE_USER` - Usuario regular con permisos básicos
+
+**Response exitoso (200 OK):**
+```json
+{
+    "message": "Rol actualizado exitosamente",
+    "user": {
+        "userId": "550e8400-e29b-41d4-a716-446655440000",
+        "email": "user@test.com",
+        "fullName": "Usuario Test",
+        "phone": "88888888",
+        "active": true,
+        "roleCode": "ROLE_ADMIN"
+    }
+}
+```
+
+**Errores comunes:**
+
+**Usuario no encontrado (400 Bad Request):**
+```json
+{
+    "error": "Error al cambiar rol",
+    "message": "Usuario no encontrado con ID: 550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Rol no encontrado (400 Bad Request):**
+```json
+{
+    "error": "Error al cambiar rol",
+    "message": "Rol no encontrado: ROLE_INVALID"
+}
+```
+
+**Usuario ya tiene ese rol (400 Bad Request):**
+```json
+{
+    "error": "Error al cambiar rol",
+    "message": "El usuario ya tiene el rol: ROLE_ADMIN"
+}
+```
+
+**Sin permisos (403 Forbidden):**
+```json
+{
+    "error": "Access Denied",
+    "message": "You don't have permission to access this resource"
+}
+```
+
+**📧 Notificación por correo:**
+- ✅ Se envía automáticamente un email al usuario cuando su rol cambia
+- ✅ El email incluye el rol anterior y el nuevo rol
+- ✅ Se detallan los permisos del nuevo rol
+- ✅ Email con diseño HTML profesional y responsive
+- ✅ Si falla el envío del email, el cambio de rol se completa de todas formas
+
+**Permisos por rol:**
+
+**ROLE_ADMIN:**
+- Gestión completa de usuarios y roles
+- Administración de espacios y horarios
+- Gestión total de reservas
+- Acceso a dashboard y métricas
+- Cancelación sin restricciones de tiempo
+- Exportación de datos de cualquier usuario
+
+**ROLE_SUPERVISOR:**
+- Visualización y gestión de reservas
+- Gestión de horarios de espacios
+- Acceso a dashboard y métricas
+- Exportación de datos de usuarios
+- Validación de códigos QR
+
+**ROLE_USER:**
+- Crear y gestionar sus propias reservas
+- Consultar espacios disponibles
+- Crear reseñas de espacios utilizados
+- Exportar sus propias reservas
+- Ver y usar códigos QR de sus reservas
+
+---
+
 ## Estados válidos para reservas
 - PENDING
 - CONFIRMED
