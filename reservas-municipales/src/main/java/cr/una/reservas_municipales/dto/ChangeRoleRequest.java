@@ -13,7 +13,7 @@ public class ChangeRoleRequest {
     private UUID userId;
     
     @NotBlank(message = "El código del rol es requerido")
-    @Pattern(regexp = "^(ROLE_ADMIN|ROLE_SUPERVISOR|ROLE_USER)$", 
-             message = "El rol debe ser ROLE_ADMIN, ROLE_SUPERVISOR o ROLE_USER")
+    @Pattern(regexp = "^(ROLE_ADMIN|ROLE_SUPERVISOR|ROLE_USER|ADMIN|SUPERVISOR|USER)$", 
+             message = "El rol debe ser ADMIN, SUPERVISOR, USER (o con prefijo ROLE_)")
     private String roleCode;
 }
