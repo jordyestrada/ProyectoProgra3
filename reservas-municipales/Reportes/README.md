@@ -82,10 +82,55 @@ Content-Type: application/json
 }
 ```
 
-### Eliminar espacio
+### Desactivar espacio (Soft Delete - RECOMENDADO)
+**Solo ADMIN - Marca el espacio como inactivo sin eliminarlo de la base de datos**
 ```
-DELETE http://localhost:8080/api/spaces/{id]
+DELETE http://localhost:8080/api/spaces/{id}
 ```
+
+**Response exitoso (200 OK):**
+```json
+{
+  "message": "Space deactivated successfully"
+}
+```
+
+**Características:**
+- ✅ NO elimina de la base de datos
+- ✅ Solo cambia `active = false`
+- ✅ Reversible: puede reactivarse
+- ✅ Mantiene datos históricos y reservas
+
+### Eliminar espacio permanentemente (Hard Delete - PELIGROSO)
+**Solo ADMIN - Elimina físicamente el espacio de la base de datos**
+```
+DELETE http://localhost:8080/api/spaces/{id}/permanent
+```
+
+**Response exitoso (200 OK):**
+```json
+{
+  "message": "Space permanently deleted"
+}
+```
+
+**Response bloqueado por reservas (409 CONFLICT):**
+```json
+{
+  "error": "Cannot delete space",
+  "message": "Cannot delete space: it has 5 associated reservation(s). Please deactivate instead."
+}
+```
+
+**⚠️ CARACTERÍSTICAS:**
+- ❌ BORRA PERMANENTEMENTE de la base de datos (DELETE físico)
+- ❌ NO reversible: los datos se pierden para siempre
+- ✅ Validación integrada: NO permite borrar si tiene reservas asociadas
+- ⚠️ Solo usar para limpiar espacios creados por error o pruebas
+
+**Cuándo usar cada uno:**
+- 🟢 **Soft Delete** (`/spaces/{id}`): Uso normal, cuando un espacio cierra temporalmente
+- 🔴 **Hard Delete** (`/spaces/{id}/permanent`): Solo para eliminar datos de prueba sin reservas
 
 ### Búsqueda avanzada de espacios
 ```
@@ -108,36 +153,43 @@ GET http://localhost:8080/api/spaces/available?startDate=2025-10-20T14:00:00-06:
 ## ReservationController
 
 ### Obtener todas las reservas
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 GET http://localhost:8080/api/reservations
 ```
 
 ### Obtener reserva por ID
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 GET http://localhost:8080/api/reservations/{id}
 ```
 
 ### Obtener reservas por usuario
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 GET http://localhost:8080/api/reservations/user/{userId}
 ```
 
 ### Obtener reservas por espacio
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
-GET {http://localhost:8080/api/reservations/space/spaceId}
+GET http://localhost:8080/api/reservations/space/{spaceId}
 ```
 
 ### Obtener reservas por estado
+**Roles permitidos: ADMIN**
 ```
 GET http://localhost:8080/api/reservations/status/{status}
 ```
 
 ### Obtener reservas en rango de fechas
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 GET http://localhost:8080/api/reservations/date-range?startDate=2025-10-20T00:00:00-06:00&endDate=2025-10-30T23:59:59-06:00
 ```
 
 ### Crear reserva
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 POST http://localhost:8080/api/reservations
 Content-Type: application/json
@@ -154,6 +206,7 @@ Content-Type: application/json
 ```
 
 ### Actualizar reserva
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 ```
 PUT http://localhost:8080/api/reservations/{id}
 Content-Type: application/json
@@ -167,6 +220,7 @@ Content-Type: application/json
 ```
 
 ### Cancelar reserva
+**Roles permitidos: ADMIN, SUPERVISOR, USER**
 **⚠️ RESTRICCIONES:**
 - Debe hacerse con al menos **24 horas** de anticipación (configurable en `application-docker.yml`).
 - Usuarios con rol **USER** solo pueden cancelar con 24+ horas de anticipación.
@@ -550,6 +604,11 @@ Content-Type: application/json
   "timeTo": "12:00:00"
 }
 ```
+
+**⏰ HORARIO POR DEFECTO:**
+- Si NO se especifica `timeFrom`: se usa **06:00 AM** por defecto
+- Si NO se especifica `timeTo`: se usa **08:00 PM** (20:00) por defecto
+- Esto facilita la creación rápida de horarios estándar
 
 **Días de la semana:** 0=Domingo, 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes, 6=Sábado
 

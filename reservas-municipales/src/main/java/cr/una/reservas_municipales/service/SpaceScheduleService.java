@@ -55,6 +55,16 @@ public class SpaceScheduleService {
         Space space = spaceRepository.findById(spaceId)
                 .orElseThrow(() -> new IllegalArgumentException("Space not found with ID: " + spaceId));
         
+        // Aplicar horario por defecto si no se especifica: 6:00 AM a 8:00 PM
+        if (dto.getTimeFrom() == null) {
+            dto.setTimeFrom(LocalTime.of(6, 0));
+            log.info("No se especificó hora de inicio, usando valor por defecto: 06:00");
+        }
+        if (dto.getTimeTo() == null) {
+            dto.setTimeTo(LocalTime.of(20, 0));
+            log.info("No se especificó hora de cierre, usando valor por defecto: 20:00");
+        }
+        
         // Validate time logic
         if (dto.getTimeTo().isBefore(dto.getTimeFrom()) || dto.getTimeTo().equals(dto.getTimeFrom())) {
             throw new IllegalArgumentException("End time must be after start time");
