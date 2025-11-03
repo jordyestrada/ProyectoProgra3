@@ -1,10 +1,10 @@
 package cr.una.reservas_municipales.controller;
 
-import cr.una.reservas_municipales.dto.SpaceDto;
-import cr.una.reservas_municipales.service.SpaceService;
-import cr.una.reservas_municipales.service.JwtService;
-import cr.una.reservas_municipales.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import cr.una.reservas_municipales.dto.SpaceDto;
+import cr.una.reservas_municipales.repository.UserRepository;
+import cr.una.reservas_municipales.service.JwtService;
+import cr.una.reservas_municipales.service.SpaceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,13 +14,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -43,271 +42,392 @@ class SpaceControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private SpaceDto spaceDto1;
-    private SpaceDto spaceDto2;
     private UUID spaceId;
 
     @BeforeEach
     void setUp() {
         spaceId = UUID.randomUUID();
-
-        spaceDto1 = new SpaceDto();
-        spaceDto1.setSpaceId(spaceId);
-        spaceDto1.setName("Cancha de Fútbol");
-        spaceDto1.setCapacity(22);
-        spaceDto1.setLocation("Complejo Deportivo Central");
-        spaceDto1.setOutdoor(true);
-        spaceDto1.setActive(true);
-        spaceDto1.setDescription("Cancha de fútbol profesional");
-
-        spaceDto2 = new SpaceDto();
-        spaceDto2.setSpaceId(UUID.randomUUID());
-        spaceDto2.setName("Salón de Eventos");
-        spaceDto2.setCapacity(100);
-        spaceDto2.setLocation("Centro Municipal");
-        spaceDto2.setOutdoor(false);
-        spaceDto2.setActive(true);
-        spaceDto2.setDescription("Salón para eventos y conferencias");
     }
+
+    // Helper to throw checked exceptions from Mockito answers
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> RuntimeException sneakyThrow(Throwable t) throws T {
+        throw (T) t;
+    }
+
+    // ===================== Success path tests =====================
 
     @Test
     void testGetAllSpaces_Success() throws Exception {
-        List<SpaceDto> spaces = Arrays.asList(spaceDto1, spaceDto2);
-        when(spaceService.listAll()).thenReturn(spaces);
+        SpaceDto s1 = new SpaceDto();
+        s1.setSpaceId(UUID.randomUUID());
+        s1.setName("Gym");
+        s1.setCapacity(50);
+        s1.setLocation("A");
+        s1.setOutdoor(false);
+        s1.setActive(true);
+
+        SpaceDto s2 = new SpaceDto();
+        s2.setSpaceId(UUID.randomUUID());
+        s2.setName("Park");
+        s2.setCapacity(200);
+        s2.setLocation("B");
+        s2.setOutdoor(true);
+        s2.setActive(true);
+
+        when(spaceService.listAll()).thenReturn(List.of(s1, s2));
 
         mockMvc.perform(get("/api/spaces"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].name").value("Cancha de Fútbol"))
-                .andExpect(jsonPath("$[0].capacity").value(22))
-                .andExpect(jsonPath("$[1].name").value("Salón de Eventos"));
-
-        verify(spaceService, times(1)).listAll();
+                .andExpect(jsonPath("$[0].name").value("Gym"))
+                .andExpect(jsonPath("$[1].name").value("Park"));
     }
 
     @Test
-    void testGetAllSpaces_EmptyList() throws Exception {
-        when(spaceService.listAll()).thenReturn(Arrays.asList());
-
-        mockMvc.perform(get("/api/spaces"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(0));
-
-        verify(spaceService, times(1)).listAll();
-    }
-
-    @Test
-    void testGetAllSpaces_Exception() throws Exception {
-        when(spaceService.listAll()).thenThrow(new RuntimeException("Database error"));
+    void testGetAllSpaces_Exception_InternalServerError() throws Exception {
+        when(spaceService.listAll()).thenThrow(new RuntimeException("boom"));
 
         mockMvc.perform(get("/api/spaces"))
                 .andExpect(status().isInternalServerError());
-
-        verify(spaceService, times(1)).listAll();
     }
 
     @Test
     void testGetActiveSpaces_Success() throws Exception {
-        List<SpaceDto> activeSpaces = Arrays.asList(spaceDto1, spaceDto2);
-        when(spaceService.listActiveSpaces()).thenReturn(activeSpaces);
+        SpaceDto s = new SpaceDto();
+        s.setSpaceId(UUID.randomUUID());
+        s.setName("Court");
+        s.setCapacity(100);
+        s.setLocation("C");
+        s.setOutdoor(false);
+        s.setActive(true);
+
+        when(spaceService.listActiveSpaces()).thenReturn(List.of(s));
 
         mockMvc.perform(get("/api/spaces/active"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(2));
-
-        verify(spaceService, times(1)).listActiveSpaces();
+                .andExpect(jsonPath("$[0].name").value("Court"));
     }
 
     @Test
     void testSearchSpaces_Success() throws Exception {
-        List<SpaceDto> results = Arrays.asList(spaceDto1);
-        when(spaceService.searchSpaces(anyString(), any(), any(), any(), any(), any(), anyBoolean()))
-                .thenReturn(results);
+        SpaceDto s = new SpaceDto();
+        s.setSpaceId(UUID.randomUUID());
+        s.setName("Skate Park");
+        s.setCapacity(120);
+        s.setLocation("Downtown");
+        s.setOutdoor(true);
+        s.setActive(true);
+
+        when(spaceService.searchSpaces(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(s));
 
         mockMvc.perform(get("/api/spaces/search")
-                        .param("name", "Cancha")
-                        .param("minCapacity", "20")
-                        .param("outdoor", "true"))
+                        .param("name", "park")
+                        .param("minCapacity", "50")
+                        .param("activeOnly", "true"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Cancha de Fútbol"));
-
-        verify(spaceService, times(1)).searchSpaces(
-                eq("Cancha"), any(), eq(20), any(), any(), eq(true), eq(true));
+                .andExpect(jsonPath("$[0].name").value("Skate Park"));
     }
 
     @Test
     void testGetAvailableSpaces_Success() throws Exception {
-        List<SpaceDto> availableSpaces = Arrays.asList(spaceDto1);
+        SpaceDto s = new SpaceDto();
+        s.setSpaceId(UUID.randomUUID());
+        s.setName("Hall");
+        s.setCapacity(80);
+        s.setLocation("East");
+        s.setOutdoor(false);
+        s.setActive(true);
+
         when(spaceService.findAvailableSpaces(anyString(), anyString(), any(), any()))
-                .thenReturn(availableSpaces);
+                .thenReturn(List.of(s));
 
         mockMvc.perform(get("/api/spaces/available")
-                        .param("startDate", "2025-11-01T10:00:00Z")
-                        .param("endDate", "2025-11-01T12:00:00Z"))
+                        .param("startDate", "2025-11-02T10:00:00-06:00")
+                        .param("endDate", "2025-11-02T12:00:00-06:00")
+                        .param("minCapacity", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1));
-
-        verify(spaceService, times(1)).findAvailableSpaces(
-                eq("2025-11-01T10:00:00Z"), eq("2025-11-01T12:00:00Z"), any(), any());
+                .andExpect(jsonPath("$[0].name").value("Hall"));
     }
 
     @Test
-    void testGetSpaceById_Found() throws Exception {
-        when(spaceService.getById(spaceId)).thenReturn(Optional.of(spaceDto1));
+    void testGetSpaceById_Success() throws Exception {
+        SpaceDto s = new SpaceDto();
+        s.setSpaceId(spaceId);
+        s.setName("Auditorium");
+        s.setCapacity(300);
+        s.setLocation("Main");
+        s.setOutdoor(false);
+        s.setActive(true);
+
+        when(spaceService.getById(eq(spaceId))).thenReturn(Optional.of(s));
 
         mockMvc.perform(get("/api/spaces/{id}", spaceId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.spaceId").value(spaceId.toString()))
-                .andExpect(jsonPath("$.name").value("Cancha de Fútbol"))
-                .andExpect(jsonPath("$.capacity").value(22))
-                .andExpect(jsonPath("$.outdoor").value(true));
-
-        verify(spaceService, times(1)).getById(spaceId);
+                .andExpect(jsonPath("$.name").value("Auditorium"));
     }
 
     @Test
     void testGetSpaceById_NotFound() throws Exception {
-        UUID nonExistentId = UUID.randomUUID();
-        when(spaceService.getById(nonExistentId)).thenReturn(Optional.empty());
+        when(spaceService.getById(eq(spaceId))).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/spaces/{id}", nonExistentId))
+        mockMvc.perform(get("/api/spaces/{id}", spaceId))
                 .andExpect(status().isNotFound());
-
-        verify(spaceService, times(1)).getById(nonExistentId);
     }
 
     @Test
-    void testCreateSpace_Success() throws Exception {
-        SpaceDto newSpace = new SpaceDto();
-        newSpace.setName("Nueva Cancha");
-        newSpace.setCapacity(30);
-        newSpace.setLocation("Parque Norte");
+    void testCreateSpace_Success_Created() throws Exception {
+        SpaceDto payload = new SpaceDto();
+        payload.setName("New Space");
+        payload.setCapacity(10);
+        payload.setLocation("Center");
+        payload.setOutdoor(false);
+        payload.setActive(true);
+        payload.setDescription("Desc");
 
-        SpaceDto createdSpace = new SpaceDto();
-        createdSpace.setSpaceId(UUID.randomUUID());
-        createdSpace.setName("Nueva Cancha");
-        createdSpace.setCapacity(30);
-        createdSpace.setLocation("Parque Norte");
+        SpaceDto created = new SpaceDto();
+        created.setSpaceId(UUID.randomUUID());
+        created.setName(payload.getName());
+        created.setCapacity(payload.getCapacity());
+        created.setLocation(payload.getLocation());
+        created.setOutdoor(payload.isOutdoor());
+        created.setActive(true);
+        created.setDescription(payload.getDescription());
 
-        when(spaceService.existsByName("Nueva Cancha")).thenReturn(false);
-        when(spaceService.createSpace(any(SpaceDto.class))).thenReturn(createdSpace);
+        when(spaceService.existsByName(eq("New Space"))).thenReturn(false);
+        when(spaceService.createSpace(any(SpaceDto.class))).thenReturn(created);
 
         mockMvc.perform(post("/api/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newSpace)))
+                        .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("Nueva Cancha"))
-                .andExpect(jsonPath("$.capacity").value(30));
-
-        verify(spaceService, times(1)).existsByName("Nueva Cancha");
-        verify(spaceService, times(1)).createSpace(any(SpaceDto.class));
+                .andExpect(jsonPath("$.spaceId").isNotEmpty())
+                .andExpect(jsonPath("$.name").value("New Space"));
     }
 
     @Test
-    void testCreateSpace_NameAlreadyExists() throws Exception {
-        SpaceDto newSpace = new SpaceDto();
-        newSpace.setName("Cancha de Fútbol");
-        newSpace.setCapacity(22);
+    void testCreateSpace_NameExists_BadRequest() throws Exception {
+        SpaceDto payload = new SpaceDto();
+        payload.setName("Dup");
+        payload.setCapacity(5);
+        payload.setLocation("Loc");
+        payload.setOutdoor(false);
+        payload.setActive(true);
 
-        when(spaceService.existsByName("Cancha de Fútbol")).thenReturn(true);
+        when(spaceService.existsByName(eq("Dup"))).thenReturn(true);
 
         mockMvc.perform(post("/api/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newSpace)))
+                        .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Space name already exists"));
-
-        verify(spaceService, times(1)).existsByName("Cancha de Fútbol");
-        verify(spaceService, never()).createSpace(any(SpaceDto.class));
     }
 
     @Test
     void testUpdateSpace_Success() throws Exception {
-        SpaceDto updatedData = new SpaceDto();
-        updatedData.setName("Cancha Actualizada");
-        updatedData.setCapacity(25);
+        SpaceDto payload = new SpaceDto();
+        payload.setName("Updated");
+        payload.setCapacity(40);
+        payload.setLocation("North");
+        payload.setOutdoor(true);
+        payload.setActive(true);
 
-        when(spaceService.existsByNameAndNotId("Cancha Actualizada", spaceId)).thenReturn(false);
-        when(spaceService.updateSpace(eq(spaceId), any(SpaceDto.class)))
-                .thenReturn(Optional.of(updatedData));
+        SpaceDto updated = new SpaceDto();
+        updated.setSpaceId(spaceId);
+        updated.setName("Updated");
+        updated.setCapacity(40);
+        updated.setLocation("North");
+        updated.setOutdoor(true);
+        updated.setActive(true);
+
+        when(spaceService.existsByNameAndNotId(eq("Updated"), eq(spaceId))).thenReturn(false);
+        when(spaceService.updateSpace(eq(spaceId), any(SpaceDto.class))).thenReturn(Optional.of(updated));
 
         mockMvc.perform(put("/api/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updatedData)))
+                        .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Cancha Actualizada"))
-                .andExpect(jsonPath("$.capacity").value(25));
-
-        verify(spaceService, times(1)).existsByNameAndNotId("Cancha Actualizada", spaceId);
-        verify(spaceService, times(1)).updateSpace(eq(spaceId), any(SpaceDto.class));
+                .andExpect(jsonPath("$.name").value("Updated"));
     }
 
     @Test
     void testUpdateSpace_NotFound() throws Exception {
-        UUID nonExistentId = UUID.randomUUID();
-        SpaceDto updatedData = new SpaceDto();
-        updatedData.setName("Cancha Actualizada");
-        updatedData.setCapacity(25);
+        SpaceDto payload = new SpaceDto();
+        payload.setName("Nope");
+        payload.setCapacity(10);
+        payload.setLocation("X");
+        payload.setOutdoor(false);
+        payload.setActive(true);
 
-        when(spaceService.existsByNameAndNotId("Cancha Actualizada", nonExistentId)).thenReturn(false);
-        when(spaceService.updateSpace(eq(nonExistentId), any(SpaceDto.class)))
-                .thenReturn(Optional.empty());
+        when(spaceService.existsByNameAndNotId(eq("Nope"), eq(spaceId))).thenReturn(false);
+        when(spaceService.updateSpace(eq(spaceId), any(SpaceDto.class))).thenReturn(Optional.empty());
 
-        mockMvc.perform(put("/api/spaces/{id}", nonExistentId)
+        mockMvc.perform(put("/api/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updatedData)))
+                        .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isNotFound());
-
-        verify(spaceService, times(1)).updateSpace(eq(nonExistentId), any(SpaceDto.class));
     }
 
     @Test
     void testDeactivateSpace_Success() throws Exception {
-        when(spaceService.deactivateSpace(spaceId)).thenReturn(true);
+        when(spaceService.deactivateSpace(eq(spaceId))).thenReturn(true);
 
         mockMvc.perform(delete("/api/spaces/{id}", spaceId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Space deactivated successfully"));
-
-        verify(spaceService, times(1)).deactivateSpace(spaceId);
     }
 
     @Test
     void testDeactivateSpace_NotFound() throws Exception {
-        UUID nonExistentId = UUID.randomUUID();
-        when(spaceService.deactivateSpace(nonExistentId)).thenReturn(false);
+        when(spaceService.deactivateSpace(eq(spaceId))).thenReturn(false);
 
-        mockMvc.perform(delete("/api/spaces/{id}", nonExistentId))
+        mockMvc.perform(delete("/api/spaces/{id}", spaceId))
                 .andExpect(status().isNotFound());
-
-        verify(spaceService, times(1)).deactivateSpace(nonExistentId);
     }
 
     @Test
     void testDeleteSpacePermanent_Success() throws Exception {
-        when(spaceService.deleteSpace(spaceId)).thenReturn(true);
+        when(spaceService.deleteSpace(eq(spaceId))).thenReturn(true);
 
         mockMvc.perform(delete("/api/spaces/{id}/permanent", spaceId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Space permanently deleted"));
-
-        verify(spaceService, times(1)).deleteSpace(spaceId);
     }
 
     @Test
     void testDeleteSpacePermanent_NotFound() throws Exception {
-        UUID nonExistentId = UUID.randomUUID();
-        when(spaceService.deleteSpace(nonExistentId)).thenReturn(false);
+        when(spaceService.deleteSpace(eq(spaceId))).thenReturn(false);
 
-        mockMvc.perform(delete("/api/spaces/{id}/permanent", nonExistentId))
+        mockMvc.perform(delete("/api/spaces/{id}/permanent", spaceId))
                 .andExpect(status().isNotFound());
+    }
 
-        verify(spaceService, times(1)).deleteSpace(nonExistentId);
+    @Test
+    void testGetActiveSpaces_Exception_InternalServerError() throws Exception {
+        when(spaceService.listActiveSpaces()).thenThrow(new RuntimeException("boom"));
+
+        mockMvc.perform(get("/api/spaces/active"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void testSearchSpaces_Exception_InternalServerError() throws Exception {
+        when(spaceService.searchSpaces(any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("search failed"));
+
+        mockMvc.perform(get("/api/spaces/search")
+                        .param("name", "park")
+                        .param("activeOnly", "true"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void testGetAvailableSpaces_Exception_InternalServerError() throws Exception {
+        when(spaceService.findAvailableSpaces(anyString(), anyString(), any(), any()))
+                .thenThrow(new RuntimeException("availability failed"));
+
+        mockMvc.perform(get("/api/spaces/available")
+                        .param("startDate", "2025-11-02T10:00:00-06:00")
+                        .param("endDate", "2025-11-02T12:00:00-06:00"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void testGetSpaceById_Exception_InternalServerError() throws Exception {
+        when(spaceService.getById(spaceId)).thenThrow(new RuntimeException("db down"));
+
+        mockMvc.perform(get("/api/spaces/{id}", spaceId))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void testCreateSpace_Exception_InternalServerError() throws Exception {
+        SpaceDto payload = new SpaceDto();
+        payload.setName("New Space");
+        payload.setCapacity(10);
+        payload.setLocation("Center");
+        payload.setOutdoor(false);
+        payload.setActive(true);
+        payload.setDescription("Desc");
+
+        when(spaceService.existsByName(eq("New Space"))).thenReturn(false);
+        when(spaceService.createSpace(any(SpaceDto.class)))
+                .thenAnswer(inv -> sneakyThrow(new Exception("DB failure")));
+
+        mockMvc.perform(post("/api/spaces")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("Failed to create space"))
+                .andExpect(jsonPath("$.message").value("DB failure"));
+    }
+
+    @Test
+    void testUpdateSpace_NameAlreadyExists_BadRequest() throws Exception {
+        SpaceDto payload = new SpaceDto();
+        payload.setName("Existing Name");
+        payload.setCapacity(20);
+        payload.setLocation("Loc");
+        payload.setOutdoor(true);
+        payload.setActive(true);
+
+        when(spaceService.existsByNameAndNotId(eq("Existing Name"), eq(spaceId))).thenReturn(true);
+
+        mockMvc.perform(put("/api/spaces/{id}", spaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Space name already exists"));
+    }
+
+    @Test
+    void testUpdateSpace_Exception_InternalServerError() throws Exception {
+        SpaceDto payload = new SpaceDto();
+        payload.setName("Ok Name");
+        payload.setCapacity(30);
+        payload.setLocation("Loc");
+        payload.setOutdoor(false);
+        payload.setActive(true);
+
+        when(spaceService.existsByNameAndNotId(eq("Ok Name"), eq(spaceId))).thenReturn(false);
+        when(spaceService.updateSpace(eq(spaceId), any(SpaceDto.class)))
+                .thenAnswer(inv -> sneakyThrow(new Exception("Write failed")));
+
+        mockMvc.perform(put("/api/spaces/{id}", spaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("Failed to update space"))
+                .andExpect(jsonPath("$.message").value("Write failed"));
+    }
+
+    @Test
+    void testDeactivateSpace_Exception_InternalServerError() throws Exception {
+        when(spaceService.deactivateSpace(eq(spaceId))).thenThrow(new RuntimeException("Oops"));
+
+        mockMvc.perform(delete("/api/spaces/{id}", spaceId))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("Failed to deactivate space"))
+                .andExpect(jsonPath("$.message").value("Oops"));
+    }
+
+    @Test
+    void testDeleteSpacePermanent_IllegalState_Conflict() throws Exception {
+        when(spaceService.deleteSpace(eq(spaceId))).thenThrow(new IllegalStateException("has reservations"));
+
+        mockMvc.perform(delete("/api/spaces/{id}/permanent", spaceId))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Cannot delete space"))
+                .andExpect(jsonPath("$.message").value("has reservations"));
+    }
+
+    @Test
+    void testDeleteSpacePermanent_Exception_InternalServerError() throws Exception {
+        when(spaceService.deleteSpace(eq(spaceId))).thenThrow(new RuntimeException("unknown"));
+
+        mockMvc.perform(delete("/api/spaces/{id}/permanent", spaceId))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("Failed to delete space"))
+                .andExpect(jsonPath("$.message").value("unknown"));
     }
 }

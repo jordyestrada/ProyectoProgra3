@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -81,7 +82,16 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return claims.get("authorities", String.class);
+        Object value = claims.get("authorities");
+        if (value instanceof String) {
+            return (String) value;
+        }
+        // If the claim was stored as a List (e.g., List<String>), this method's contract
+        // is to return a comma-separated String or null when not applicable.
+        if (value instanceof List<?>) {
+            return null;
+        }
+        return null;
     }
 
     public Claims getClaimsFromToken(String token) {
@@ -99,18 +109,11 @@ public class JwtService {
                     .build()
                     .parseSignedClaims(token);
             return true;
-        } catch (SecurityException ex) {
-            log.error("Invalid JWT signature");
-        } catch (MalformedJwtException ex) {
-            log.error("Invalid JWT token");
-        } catch (ExpiredJwtException ex) {
-            log.error("Expired JWT token");
-        } catch (UnsupportedJwtException ex) {
-            log.error("Unsupported JWT token");
-        } catch (IllegalArgumentException ex) {
-            log.error("JWT claims string is empty");
+        } catch (JwtException | IllegalArgumentException ex) {
+            // JwtException covers signature, malformed, expired, unsupported, etc.
+            log.error("Invalid JWT: {}", ex.getMessage());
+            return false;
         }
-        return false;
     }
 
     public Date getExpirationDateFromToken(String token) {

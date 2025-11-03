@@ -88,8 +88,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser() {
         try {
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "User info endpoint - to be implemented");
+            Map<String, String> response = authenticationService.currentUserInfo();
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error getting current user", e);

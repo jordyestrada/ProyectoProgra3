@@ -12,6 +12,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.stereotype.Service;
 
@@ -44,9 +45,7 @@ public class AuthenticationService {
     private AzureProfile validateAzureIdToken(String idToken) {
         try {
             // Valida firma RS256 y tiempos con el decodificador de Spring
-            var decoder = NimbusJwtDecoder.withJwkSetUri(JWKS_URL)
-                    .jwsAlgorithm(SignatureAlgorithm.RS256)
-                    .build();
+            var decoder = buildAzureJwtDecoder();
 
             Jwt jwt = decoder.decode(idToken);
 
@@ -84,6 +83,13 @@ public class AuthenticationService {
             // Mantén este mensaje para que el front muestre el detalle
             throw new RuntimeException("Azure authentication failed: " + ex.getMessage(), ex);
         }
+    }
+
+    // Extracted for testability: allows tests to stub the decoder and simulate valid JWTs without network
+    protected JwtDecoder buildAzureJwtDecoder() {
+        return NimbusJwtDecoder.withJwkSetUri(JWKS_URL)
+                .jwsAlgorithm(SignatureAlgorithm.RS256)
+                .build();
     }
 
     // Helpers tolerantes a arrays/listas
@@ -178,6 +184,8 @@ public class AuthenticationService {
             log.debug("Processing authentication request for email: {}", loginRequest.getEmail());
             log.debug("Azure token present: {}", loginRequest.getAzureToken() != null && !loginRequest.getAzureToken().isEmpty());
             log.debug("Email and password present: {}", loginRequest.getEmail() != null && loginRequest.getPassword() != null);
+            // Extra visibility using explicit labels as requested
+            log.debug("Azure Token label: {}", loginRequest.getAzureToken() != null ? "[PRESENT]" : "[NULL]");
             
             if (loginRequest.getAzureToken() != null && !loginRequest.getAzureToken().isEmpty()) {
                 log.debug("Attempting Azure AD authentication");
@@ -268,5 +276,15 @@ public class AuthenticationService {
 
     public String getUsernameFromToken(String token) {
         return jwtService.getUsernameFromToken(token);
+    }
+
+    /**
+     * Returns current user info payload for /api/auth/me endpoint.
+     * Kept simple for now; can be extended later to include real user details.
+     */
+    public java.util.Map<String, String> currentUserInfo() {
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("message", "User info endpoint - to be implemented");
+        return response;
     }
 }

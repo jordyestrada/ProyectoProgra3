@@ -142,4 +142,87 @@ class PermitAllSecurityConfigTest {
         // Assert
         verify(http).authorizeHttpRequests(any());
     }
+    
+    @Test
+    @SuppressWarnings("unchecked")
+    void testCsrfDisableLambdaIsExecuted() throws Exception {
+        // Arrange
+        HttpSecurity http = mock(HttpSecurity.class, RETURNS_DEEP_STUBS);
+        
+        // Capturar el customizer de csrf
+        final org.springframework.security.config.Customizer<?>[] csrfCustomizer = new org.springframework.security.config.Customizer[1];
+        
+        when(http.csrf(any())).thenAnswer(invocation -> {
+            csrfCustomizer[0] = invocation.getArgument(0);
+            return http;
+        });
+        when(http.authorizeHttpRequests(any())).thenReturn(http);
+        when(http.build()).thenReturn(mock(DefaultSecurityFilterChain.class));
+
+        // Act - Invocar el método para capturar el customizer
+        permitAllSecurityConfig.permitAllSecurity(http);
+
+        // Assert - Verificar que el customizer fue capturado
+        assertNotNull(csrfCustomizer[0], "CSRF customizer should be captured");
+        
+        // Ejecutar el csrf customizer (línea 18: csrf -> csrf.disable())
+        var csrfConfigurer = mock(
+            org.springframework.security.config.annotation.web.configurers.CsrfConfigurer.class,
+            RETURNS_DEEP_STUBS
+        );
+        
+        org.springframework.security.config.Customizer<org.springframework.security.config.annotation.web.configurers.CsrfConfigurer> csrfCustomizerTyped =
+            (org.springframework.security.config.Customizer<org.springframework.security.config.annotation.web.configurers.CsrfConfigurer>) csrfCustomizer[0];
+        
+        csrfCustomizerTyped.customize(csrfConfigurer);
+        
+        // Verificar que se llamó disable()
+        verify(csrfConfigurer, times(1)).disable();
+    }
+    
+    @Test
+    @SuppressWarnings("unchecked")
+    void testAuthorizeHttpRequestsLambdaIsExecuted() throws Exception {
+        // Arrange
+        HttpSecurity http = mock(HttpSecurity.class, RETURNS_DEEP_STUBS);
+        
+        // Capturar el customizer de authorizeHttpRequests
+        final org.springframework.security.config.Customizer<?>[] authCustomizer = new org.springframework.security.config.Customizer[1];
+        
+        when(http.csrf(any())).thenReturn(http);
+        when(http.authorizeHttpRequests(any())).thenAnswer(invocation -> {
+            authCustomizer[0] = invocation.getArgument(0);
+            return http;
+        });
+        when(http.build()).thenReturn(mock(DefaultSecurityFilterChain.class));
+
+        // Act - Invocar el método para capturar el customizer
+        permitAllSecurityConfig.permitAllSecurity(http);
+
+        // Assert - Verificar que el customizer fue capturado
+        assertNotNull(authCustomizer[0], "Authorization customizer should be captured");
+        
+        // Ejecutar el authorizeHttpRequests customizer (línea 19: auth -> auth.anyRequest().permitAll())
+        var authRegistry = mock(
+            org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer.AuthorizationManagerRequestMatcherRegistry.class,
+            RETURNS_DEEP_STUBS
+        );
+        
+        var authorizedUrl = mock(
+            org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer.AuthorizedUrl.class,
+            RETURNS_DEEP_STUBS
+        );
+        
+        when(authRegistry.anyRequest()).thenReturn(authorizedUrl);
+        when(authorizedUrl.permitAll()).thenReturn(authRegistry);
+        
+        org.springframework.security.config.Customizer<org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer.AuthorizationManagerRequestMatcherRegistry> authCustomizerTyped =
+            (org.springframework.security.config.Customizer<org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer.AuthorizationManagerRequestMatcherRegistry>) authCustomizer[0];
+        
+        authCustomizerTyped.customize(authRegistry);
+        
+        // Verificar que se llamó anyRequest() y permitAll()
+        verify(authRegistry, times(1)).anyRequest();
+        verify(authorizedUrl, times(1)).permitAll();
+    }
 }

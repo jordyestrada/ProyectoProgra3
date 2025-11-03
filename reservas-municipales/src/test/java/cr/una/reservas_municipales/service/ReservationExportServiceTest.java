@@ -4,6 +4,250 @@ import cr.una.reservas_municipales.dto.ReservationSummaryDto;
 import cr.una.reservas_municipales.dto.ReservationWithSpaceDto;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ReservationExportServiceTest {
+
+    private final ReservationExportService service = new ReservationExportService();
+
+    private XSSFWorkbook wbFromBytes(byte[] bytes) throws IOException {
+        return new XSSFWorkbook(new ByteArrayInputStream(bytes));
+    }
+
+    private ReservationSummaryDto baseSummaryWithAmount(BigDecimal totalPaid) {
+        return ReservationSummaryDto.builder()
+                .userName("User")
+                .userEmail("user@test.com")
+                .currency("CRC")
+                .totalReservations(1)
+                .confirmedReservations(0)
+                .cancelledReservations(0)
+                .pendingReservations(1)
+                .completedReservations(0)
+                .totalAmountPaid(totalPaid)
+                .build();
+    }
+
+    private ReservationWithSpaceDto reservationWithStatus(String status, BigDecimal amount) {
+        ReservationWithSpaceDto r = new ReservationWithSpaceDto();
+        r.setReservationId(UUID.randomUUID());
+        r.setSpaceName("Sala 1");
+        r.setStartsAt(OffsetDateTime.now());
+        r.setEndsAt(OffsetDateTime.now().plusHours(2));
+        r.setStatus(status);
+        r.setTotalAmount(amount);
+        r.setCurrency("CRC");
+        r.setCreatedAt(OffsetDateTime.now());
+        r.setUpdatedAt(OffsetDateTime.now());
+        return r;
+    }
+
+    // 1) Linea 227: amountValueCell.setCellValue(0.0) cuando summary.getTotalAmountPaid() == null
+    @Test
+    void resumen_totalAmountPaidNull_esCero() throws IOException {
+        byte[] bytes = service.generateReservationsExcel(List.of(), baseSummaryWithAmount(null));
+        try (Workbook wb = wbFromBytes(bytes)) {
+            Sheet resumen = wb.getSheet("Resumen");
+            assertNotNull(resumen);
+            Double amount = null;
+            for (int i = 0; i <= resumen.getLastRowNum(); i++) {
+                Row row = resumen.getRow(i);
+                if (row == null) continue;
+                Cell c0 = row.getCell(0);
+                if (c0 != null && "Total Dinero Pagado:".equals(c0.getStringCellValue())) {
+                    amount = row.getCell(1).getNumericCellValue();
+                    break;
+                }
+            }
+            assertNotNull(amount);
+            assertEquals(0.0, amount, 0.0001);
+        }
+    }
+
+    // 2) Linea 302: return "Completada" cuando status == COMPLETED
+    @Test
+    void estadoCompleted_seMuestraComoCompletada() throws IOException {
+        List<ReservationWithSpaceDto> list = new ArrayList<>();
+        list.add(reservationWithStatus("COMPLETED", BigDecimal.valueOf(1000)));
+        byte[] bytes = service.generateReservationsExcel(list, baseSummaryWithAmount(BigDecimal.ZERO));
+
+        try (Workbook wb = wbFromBytes(bytes)) {
+            Sheet reservaciones = wb.getSheet("Reservaciones");
+            Row row1 = reservaciones.getRow(1);
+            assertEquals("Completada", row1.getCell(4).getStringCellValue());
+        }
+    }
+
+    // 3) Linea 304: return status; para valores desconocidos
+    @Test
+    void estadoDesconocido_seMuestraComoOriginal() throws IOException {
+        List<ReservationWithSpaceDto> list = new ArrayList<>();
+        list.add(reservationWithStatus("DESCONOCIDO", null));
+        byte[] bytes = service.generateReservationsExcel(list, baseSummaryWithAmount(BigDecimal.ZERO));
+
+        try (Workbook wb = wbFromBytes(bytes)) {
+            Sheet reservaciones = wb.getSheet("Reservaciones");
+            Row row1 = reservaciones.getRow(1);
+            assertEquals("DESCONOCIDO", row1.getCell(4).getStringCellValue());
+        }
+    }
+}
+
+/*
+
+import cr.una.reservas_municipales.dto.ReservationSummaryDto;
+import cr.una.reservas_municipales.dto.ReservationWithSpaceDto;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ReservationExportServiceTest {
+
+    private final ReservationExportService service = new ReservationExportService();
+
+    private Workbook workbookFromBytes(byte[] data) throws IOException {
+        return new XSSFWorkbook(new ByteArrayInputStream(data));
+    }
+
+    @Test
+    void summaryAmountNull_defaultsToZeroInResumenSheet() throws IOException {
+        // Arrange: summary with null totalAmountPaid
+        ReservationSummaryDto summary = ReservationSummaryDto.builder()
+                .userName("Test User")
+                .userEmail("user@test.com")
+                .currency("CRC")
+                .totalReservations(3)
+                .confirmedReservations(1)
+                .cancelledReservations(1)
+                .pendingReservations(1)
+                .completedReservations(0)
+                .totalAmountPaid(null)
+                .build();
+
+        // Act
+        byte[] bytes = service.generateReservationsExcel(List.of(), summary);
+
+        // Assert: open workbook, go to "Resumen", find row where col 0 == "Total Dinero Pagado:" and read col 1 numeric value
+        try (Workbook wb = workbookFromBytes(bytes)) {
+            Sheet resumen = wb.getSheet("Resumen");
+            assertNotNull(resumen, "Sheet 'Resumen' should exist");
+            Double amount = null;
+            for (int i = 0; i <= resumen.getLastRowNum(); i++) {
+                Row row = resumen.getRow(i);
+                if (row == null) continue;
+                Cell c0 = row.getCell(0);
+                if (c0 != null && "Total Dinero Pagado:".equals(c0.getStringCellValue())) {
+                    Cell c1 = row.getCell(1);
+                    amount = c1 != null ? c1.getNumericCellValue() : null;
+                    break;
+                }
+            }
+            assertNotNull(amount, "Amount cell should be present");
+            assertEquals(0.0, amount, 0.0001);
+        }
+    }
+
+    private ReservationWithSpaceDto sampleReservation(String status, BigDecimal amount) {
+        ReservationWithSpaceDto r = new ReservationWithSpaceDto();
+        r.setReservationId(UUID.randomUUID());
+        r.setSpaceId(UUID.randomUUID());
+        r.setUserId(UUID.randomUUID());
+        r.setSpaceName("Sala 1");
+        r.setStartsAt(OffsetDateTime.now());
+        r.setEndsAt(OffsetDateTime.now().plusHours(2));
+        r.setStatus(status);
+        r.setTotalAmount(amount);
+        r.setCurrency("CRC");
+        r.setCreatedAt(OffsetDateTime.now());
+        r.setUpdatedAt(OffsetDateTime.now());
+        r.setObservations("Obs");
+        return r;
+    }
+
+    private ReservationSummaryDto minimalSummary() {
+        return ReservationSummaryDto.builder()
+                .userName("User")
+                .userEmail("user@test.com")
+                .currency("CRC")
+                .totalReservations(1)
+                .confirmedReservations(0)
+                .cancelledReservations(0)
+                .pendingReservations(0)
+                .completedReservations(0)
+                .totalAmountPaid(BigDecimal.ZERO)
+                .build();
+    }
+
+    @Test
+    void statusCompleted_isRenderedAsCompletadaInReservacionesSheet() throws IOException {
+        // Arrange
+        List<ReservationWithSpaceDto> reservations = new ArrayList<>();
+        reservations.add(sampleReservation("COMPLETED", BigDecimal.valueOf(1000)));
+
+        // Act
+        byte[] bytes = service.generateReservationsExcel(reservations, minimalSummary());
+
+        // Assert: open sheet "Reservaciones", read first data row, Estado column index 4
+        try (Workbook wb = workbookFromBytes(bytes)) {
+            Sheet reservaciones = wb.getSheet("Reservaciones");
+            assertNotNull(reservaciones, "Sheet 'Reservaciones' should exist");
+            Row row1 = reservaciones.getRow(1); // first data row
+            assertNotNull(row1);
+            Cell estadoCell = row1.getCell(4);
+            assertNotNull(estadoCell);
+            assertEquals("Completada", estadoCell.getStringCellValue());
+        }
+    }
+
+    @Test
+    void statusUnknown_isRenderedAsOriginalStatusInReservacionesSheet() throws IOException {
+        // Arrange
+        List<ReservationWithSpaceDto> reservations = new ArrayList<>();
+        reservations.add(sampleReservation("DESCONOCIDO", null));
+
+        // Act
+        byte[] bytes = service.generateReservationsExcel(reservations, minimalSummary());
+
+        // Assert
+        try (Workbook wb = workbookFromBytes(bytes)) {
+            Sheet reservaciones = wb.getSheet("Reservaciones");
+            Row row1 = reservaciones.getRow(1);
+            Cell estadoCell = row1.getCell(4);
+            assertEquals("DESCONOCIDO", estadoCell.getStringCellValue());
+        }
+    }
+}
+
+*/
+/* package cr.una.reservas_municipales.service;
+
+import cr.una.reservas_municipales.dto.ReservationSummaryDto;
+import cr.una.reservas_municipales.dto.ReservationWithSpaceDto;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -322,3 +566,4 @@ class ReservationExportServiceTest {
         }
     }
 }
+*/

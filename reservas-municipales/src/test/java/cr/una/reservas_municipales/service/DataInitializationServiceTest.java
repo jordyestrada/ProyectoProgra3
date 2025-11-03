@@ -11,6 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -172,5 +174,65 @@ class DataInitializationServiceTest {
         // Assert
         // Solo se deben guardar 2 tipos nuevos, no el existente
         verify(spaceTypeRepository, times(2)).save(any(SpaceType.class));
+    }
+
+    @Test
+    void testCreateUserIfNotExists_UserNotFound_RoleExists_SavesUser() {
+        // Arrange
+        String email = "newuser@test.com";
+        String fullName = "Nuevo Usuario";
+        String roleCode = "USER";
+
+        Role role = new Role();
+        role.setCode(roleCode);
+        role.setName("Usuario común");
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+        when(roleRepository.findById(roleCode)).thenReturn(Optional.of(role));
+        when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act: invoke private method via reflection
+        assertDoesNotThrow(() ->
+                ReflectionTestUtils.invokeMethod(
+                        dataInitializationService,
+                        "createUserIfNotExists",
+                        email, fullName, roleCode
+                )
+        );
+
+        // Assert: user saved with expected properties
+        ArgumentCaptor<cr.una.reservas_municipales.model.User> userCaptor = ArgumentCaptor.forClass(cr.una.reservas_municipales.model.User.class);
+        verify(userRepository, times(1)).save(userCaptor.capture());
+        cr.una.reservas_municipales.model.User saved = userCaptor.getValue();
+        assertNotNull(saved.getUserId(), "userId should be generated");
+        assertEquals(email, saved.getEmail());
+        assertEquals(fullName, saved.getFullName());
+        assertEquals("testpass", saved.getPasswordHash(), "Password should be the test value");
+        assertTrue(saved.isActive(), "User should be active");
+        assertSame(role, saved.getRole(), "Role should be set from repository");
+        assertNotNull(saved.getCreatedAt());
+        assertNotNull(saved.getUpdatedAt());
+    }
+
+    @Test
+    void testCreateUserIfNotExists_UserNotFound_RoleMissing_Throws() {
+        // Arrange
+        String email = "nouser@test.com";
+        String fullName = "Sin Rol";
+        String roleCode = "MISSING";
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+        when(roleRepository.findById(roleCode)).thenReturn(Optional.empty());
+
+        // Act + Assert
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                ReflectionTestUtils.invokeMethod(
+                        dataInitializationService,
+                        "createUserIfNotExists",
+                        email, fullName, roleCode
+                )
+        );
+        assertEquals("Role not found: " + roleCode, ex.getMessage());
+        verify(userRepository, never()).save(any());
     }
 }

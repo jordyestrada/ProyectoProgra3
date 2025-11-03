@@ -1,15 +1,23 @@
 package cr.una.reservas_municipales.service;
 
+import com.google.zxing.common.BitMatrix;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Base64;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
 
 @ExtendWith(MockitoExtension.class)
 class QRCodeServiceTest {
@@ -213,5 +221,18 @@ class QRCodeServiceTest {
         // Nota: No podemos decodificar el QR aquí sin librerías adicionales,
         // pero podemos verificar que el formato es consistente (Base64 válido)
         assertDoesNotThrow(() -> Base64.getDecoder().decode(qr1));
+    }
+
+    @Test
+    void testGenerateQRCode_OnWriteIOException_ThrowsRuntimeException() {
+        try (MockedStatic<MatrixToImageWriter> mocked = Mockito.mockStatic(MatrixToImageWriter.class)) {
+            mocked.when(() -> MatrixToImageWriter.writeToStream(any(BitMatrix.class), eq("PNG"), any(OutputStream.class)))
+                    .thenThrow(new IOException("simulated IO error"));
+
+            RuntimeException ex = assertThrows(RuntimeException.class,
+                    () -> qrCodeService.generateQRCode(testReservationId, testUserId, testSpaceId));
+            assertEquals("Failed to generate QR code", ex.getMessage());
+            assertTrue(ex.getCause() instanceof IOException);
+        }
     }
 }

@@ -21,6 +21,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -168,8 +170,20 @@ class AuthControllerTest {
 
     @Test
     void testGetCurrentUser() throws Exception {
-        mockMvc.perform(get("/api/auth/me"))
+                java.util.Map<String, String> response = new java.util.HashMap<>();
+                response.put("message", "User info endpoint - to be implemented");
+                when(authenticationService.currentUserInfo()).thenReturn(response);
+
+                mockMvc.perform(get("/api/auth/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
+    }
+    
+    @Test
+        void testGetCurrentUserExceptionHandling_ReturnsBadRequest() throws Exception {
+                when(authenticationService.currentUserInfo()).thenThrow(new RuntimeException("boom"));
+
+                mockMvc.perform(get("/api/auth/me"))
+                                .andExpect(status().isBadRequest());
     }
 }

@@ -2,9 +2,11 @@ package cr.una.reservas_municipales.config;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Test unitario para DockerWebSecurityCustomizer
@@ -91,5 +93,30 @@ class DockerWebSecurityCustomizerTest {
         // Assert
         assertNotNull(customizer);
         assertTrue(customizer instanceof WebSecurityCustomizer);
+    }
+    
+    @Test
+    void testWebSecurityCustomizerLambdaIsExecuted() {
+        // Arrange - Crear el WebSecurityCustomizer (que es una lambda)
+        WebSecurityCustomizer customizer = dockerWebSecurityCustomizer.webSecurityCustomizer();
+        
+        // Crear mocks para WebSecurity y sus componentes
+        org.springframework.security.config.annotation.web.builders.WebSecurity web = 
+            mock(org.springframework.security.config.annotation.web.builders.WebSecurity.class, RETURNS_DEEP_STUBS);
+        
+        var ignoredRequestConfigurer = mock(
+            org.springframework.security.config.annotation.web.builders.WebSecurity.IgnoredRequestConfigurer.class,
+            RETURNS_DEEP_STUBS
+        );
+        
+        when(web.ignoring()).thenReturn(ignoredRequestConfigurer);
+        when(ignoredRequestConfigurer.requestMatchers(anyString(), anyString(), anyString())).thenReturn(ignoredRequestConfigurer);
+
+        // Act - Ejecutar la lambda del customizer (línea 15)
+        customizer.customize(web);
+
+        // Assert - Verificar que se llamaron los métodos esperados
+        verify(web, times(1)).ignoring();
+        verify(ignoredRequestConfigurer, times(1)).requestMatchers("/actuator/health", "/actuator/info", "/ping");
     }
 }

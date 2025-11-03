@@ -264,4 +264,306 @@ class ReviewServiceTest {
         verify(reviewRepository, times(1)).save(any(ReviewEntity.class));
         verify(reservationRepository, never()).findById(any());
     }
+
+    // ====== getAllReviews ======
+    @Test
+    void testGetAllReviews_ReturnsDtos() {
+        // Arrange
+        ReviewEntity e1 = new ReviewEntity();
+        e1.setReviewId(10L);
+        e1.setSpaceId(testSpaceId);
+        e1.setUserId(testUserId);
+        e1.setReservationId(testReservationId);
+        e1.setRating((short) 4);
+        e1.setComment("Muy bueno");
+        e1.setVisible(true);
+        e1.setCreatedAt(OffsetDateTime.now().minusDays(1));
+
+        when(reviewRepository.findAll()).thenReturn(java.util.List.of(e1));
+
+        // Act
+        var result = reviewService.getAllReviews();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(10L, result.get(0).getReviewId());
+        assertEquals((short) 4, result.get(0).getRating());
+        verify(reviewRepository, times(1)).findAll();
+    }
+
+    @Test
+    void testGetAllReviews_Empty() {
+        when(reviewRepository.findAll()).thenReturn(java.util.List.of());
+        var result = reviewService.getAllReviews();
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    // ====== getReviewById ======
+    @Test
+    void testGetReviewById_Found_ReturnsDto() {
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(testReviewEntity));
+        var dto = reviewService.getReviewById(1L);
+        assertNotNull(dto);
+        assertEquals(1L, dto.getReviewId());
+        assertEquals(testUserId, dto.getUserId());
+    }
+
+    @Test
+    void testGetReviewById_NotFound_ReturnsNull() {
+        when(reviewRepository.findById(999L)).thenReturn(Optional.empty());
+        assertNull(reviewService.getReviewById(999L));
+    }
+
+    // ====== getReviewsBySpace / getReviewsByUser ======
+    @Test
+    void testGetReviewsBySpace_ReturnsDtos() {
+        when(reviewRepository.findBySpaceIdAndVisibleTrueOrderByCreatedAtDesc(testSpaceId))
+                .thenReturn(java.util.List.of(testReviewEntity));
+        var list = reviewService.getReviewsBySpace(testSpaceId);
+        assertEquals(1, list.size());
+        assertEquals(testSpaceId, list.get(0).getSpaceId());
+        verify(reviewRepository).findBySpaceIdAndVisibleTrueOrderByCreatedAtDesc(testSpaceId);
+    }
+
+    @Test
+    void testGetReviewsByUser_ReturnsDtos() {
+        when(reviewRepository.findByUserIdOrderByCreatedAtDesc(testUserId))
+                .thenReturn(java.util.List.of(testReviewEntity));
+        var list = reviewService.getReviewsByUser(testUserId);
+        assertEquals(1, list.size());
+        assertEquals(testUserId, list.get(0).getUserId());
+        verify(reviewRepository).findByUserIdOrderByCreatedAtDesc(testUserId);
+    }
+
+    // ====== getSpaceStatistics ======
+    @Test
+    void testGetSpaceStatistics_WithValues_RoundsToTwoDecimals() {
+        when(reviewRepository.findAverageRatingBySpaceId(testSpaceId)).thenReturn(4.456);
+        when(reviewRepository.countReviewsBySpaceId(testSpaceId)).thenReturn(12L);
+
+        var stats = reviewService.getSpaceStatistics(testSpaceId);
+
+        assertNotNull(stats);
+        assertEquals(testSpaceId, stats.get("spaceId"));
+        assertEquals(4.46, (double) stats.get("averageRating"));
+        assertEquals(12L, stats.get("totalReviews"));
+    }
+
+    @Test
+    void testGetSpaceStatistics_NullValues_DefaultsToZero() {
+        when(reviewRepository.findAverageRatingBySpaceId(testSpaceId)).thenReturn(null);
+        when(reviewRepository.countReviewsBySpaceId(testSpaceId)).thenReturn(null);
+
+        var stats = reviewService.getSpaceStatistics(testSpaceId);
+
+        assertEquals(0.0, (double) stats.get("averageRating"));
+        assertEquals(0L, stats.get("totalReviews"));
+    }
+
+    // ====== updateReview ======
+    @Test
+    void testUpdateReview_Success_UpdatesProvidedFields() {
+        // existing entity
+        ReviewEntity existing = new ReviewEntity();
+        existing.setReviewId(5L);
+        existing.setSpaceId(testSpaceId);
+        existing.setUserId(testUserId);
+        existing.setRating((short) 2);
+        existing.setComment("Malo");
+        existing.setVisible(true);
+        existing.setCreatedAt(OffsetDateTime.now().minusDays(3));
+
+        when(reviewRepository.findById(5L)).thenReturn(Optional.of(existing));
+        when(reviewRepository.save(any(ReviewEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReviewDto update = new ReviewDto();
+        update.setRating((short) 4);
+        update.setComment("Mejorado");
+        // visible null -> no cambia
+
+        var updated = reviewService.updateReview(5L, update);
+
+        assertNotNull(updated);
+        assertEquals((short) 4, updated.getRating());
+        assertEquals("Mejorado", updated.getComment());
+        assertTrue(updated.getVisible()); // debía permanecer true
+        verify(reviewRepository).save(any(ReviewEntity.class));
+    }
+
+    @Test
+    void testUpdateReview_Success_UpdatesVisible() {
+        ReviewEntity existing = new ReviewEntity();
+        existing.setReviewId(6L);
+        existing.setSpaceId(testSpaceId);
+        existing.setUserId(testUserId);
+        existing.setRating((short) 3);
+        existing.setComment("Ok");
+        existing.setVisible(true);
+        existing.setCreatedAt(OffsetDateTime.now().minusDays(1));
+
+        when(reviewRepository.findById(6L)).thenReturn(Optional.of(existing));
+        when(reviewRepository.save(any(ReviewEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReviewDto update = new ReviewDto();
+        update.setVisible(false);
+
+        var updated = reviewService.updateReview(6L, update);
+        assertNotNull(updated);
+        assertFalse(updated.getVisible());
+    }
+
+    @Test
+    void testUpdateReview_NotFound_ReturnsNull() {
+        when(reviewRepository.findById(999L)).thenReturn(Optional.empty());
+        assertNull(reviewService.updateReview(999L, new ReviewDto()));
+        verify(reviewRepository, never()).save(any());
+    }
+
+    // ====== deleteReview ======
+    @Test
+    void testDeleteReview_WhenExists_DeletesAndReturnsTrue() {
+        when(reviewRepository.existsById(7L)).thenReturn(true);
+        doNothing().when(reviewRepository).deleteById(7L);
+        assertTrue(reviewService.deleteReview(7L));
+        verify(reviewRepository).deleteById(7L);
+    }
+
+    @Test
+    void testDeleteReview_WhenNotExists_ReturnsFalse() {
+        when(reviewRepository.existsById(8L)).thenReturn(false);
+        assertFalse(reviewService.deleteReview(8L));
+        verify(reviewRepository, never()).deleteById(anyLong());
+    }
+
+    // ====== createReview visible por defecto ======
+    @Test
+    void testCreateReview_SetsVisibleTrue_WhenDtoVisibleNull() {
+        // Arrange
+        ReviewDto input = new ReviewDto();
+        input.setSpaceId(testSpaceId);
+        input.setUserId(testUserId);
+        input.setReservationId(null);
+        input.setRating((short) 5);
+        input.setComment("Genial");
+        input.setVisible(null); // no definido
+
+        when(spaceRepository.existsById(testSpaceId)).thenReturn(true);
+        when(userRepository.existsById(testUserId)).thenReturn(true);
+
+        final ReviewEntity[] captured = new ReviewEntity[1];
+        when(reviewRepository.save(any(ReviewEntity.class))).thenAnswer(inv -> {
+            ReviewEntity arg = inv.getArgument(0);
+            captured[0] = arg;
+            // simula asignación del ID y createdAt
+            arg.setReviewId(50L);
+            arg.setCreatedAt(OffsetDateTime.now());
+            return arg;
+        });
+
+        // Act
+        var out = reviewService.createReview(input);
+
+        // Assert
+        assertNotNull(out);
+        assertTrue(captured[0].isVisible(), "El entity debe persistirse visible=true por defecto");
+        assertTrue(out.getVisible(), "El DTO devuelto debe reflejar visible=true");
+    }
+
+    // ====== convertToEntity (líneas 199 y 211) ======
+    @Test
+    void testConvertToEntity_AsignaReviewId_CuandoDtoTieneId() {
+        ReviewDto dto = new ReviewDto();
+        dto.setReviewId(123L);
+        dto.setSpaceId(testSpaceId);
+        dto.setUserId(testUserId);
+        dto.setRating((short) 4);
+
+        ReviewEntity entity = org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                reviewService, "convertToEntity", dto);
+
+        assertNotNull(entity);
+        assertEquals(123L, entity.getReviewId());
+    }
+
+    @Test
+    void testConvertToEntity_AsignaCreatedAt_CuandoDtoTieneCreatedAt() {
+        ReviewDto dto = new ReviewDto();
+        dto.setSpaceId(testSpaceId);
+        dto.setUserId(testUserId);
+        dto.setRating((short) 5);
+        java.time.OffsetDateTime created = java.time.OffsetDateTime.now().minusDays(1);
+        dto.setCreatedAt(created);
+
+        ReviewEntity entity = org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                reviewService, "convertToEntity", dto);
+
+        assertNotNull(entity);
+        assertEquals(created, entity.getCreatedAt());
+    }
+
+    // ====== convertToEntity: setReviewId y setCreatedAt ======
+    @Test
+    void testCreateReview_AssignsReviewId_WhenDtoHasId() {
+        // Arrange
+        ReviewDto input = new ReviewDto();
+        input.setReviewId(123L);
+        input.setSpaceId(testSpaceId);
+        input.setUserId(testUserId);
+        input.setReservationId(null);
+        input.setRating((short) 5);
+        input.setComment("Con ID existente");
+        input.setVisible(true);
+
+        when(spaceRepository.existsById(testSpaceId)).thenReturn(true);
+        when(userRepository.existsById(testUserId)).thenReturn(true);
+
+        final ReviewEntity[] captured = new ReviewEntity[1];
+        when(reviewRepository.save(any(ReviewEntity.class))).thenAnswer(inv -> {
+            ReviewEntity arg = inv.getArgument(0);
+            captured[0] = arg;
+            return arg;
+        });
+
+        // Act
+        var out = reviewService.createReview(input);
+
+        // Assert
+        assertNotNull(out);
+        assertEquals(123L, captured[0].getReviewId());
+        assertEquals(123L, out.getReviewId());
+    }
+
+    @Test
+    void testCreateReview_AssignsCreatedAt_WhenDtoHasCreatedAt() {
+        // Arrange
+        OffsetDateTime provided = OffsetDateTime.now().minusDays(10).withNano(0);
+
+        ReviewDto input = new ReviewDto();
+        input.setSpaceId(testSpaceId);
+        input.setUserId(testUserId);
+        input.setReservationId(null);
+        input.setRating((short) 4);
+        input.setComment("Con fecha provista");
+        input.setCreatedAt(provided);
+
+        when(spaceRepository.existsById(testSpaceId)).thenReturn(true);
+        when(userRepository.existsById(testUserId)).thenReturn(true);
+
+        final ReviewEntity[] captured = new ReviewEntity[1];
+        when(reviewRepository.save(any(ReviewEntity.class))).thenAnswer(inv -> {
+            ReviewEntity arg = inv.getArgument(0);
+            captured[0] = arg;
+            return arg;
+        });
+
+        // Act
+        var out = reviewService.createReview(input);
+
+        // Assert
+        assertNotNull(out);
+        assertEquals(provided, captured[0].getCreatedAt());
+        assertEquals(provided, out.getCreatedAt());
+    }
 }

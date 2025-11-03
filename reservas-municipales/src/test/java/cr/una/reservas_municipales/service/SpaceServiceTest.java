@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -144,7 +145,11 @@ class SpaceServiceTest {
         assertEquals("Cancha de Fútbol", result.getName());
         assertEquals(50, result.getCapacity());
         assertTrue(result.isOutdoor());
-        verify(spaceRepository, times(1)).save(any(Space.class));
+        ArgumentCaptor<Space> captor = ArgumentCaptor.forClass(Space.class);
+        verify(spaceRepository, times(1)).save(captor.capture());
+        Space saved = captor.getValue();
+    assertEquals(1, (int) saved.getSpaceTypeId());
+        assertTrue(saved.isActive());
     }
 
     @Test
@@ -216,6 +221,7 @@ class SpaceServiceTest {
     void testDeleteSpace_Success() {
         // Arrange
         when(spaceRepository.existsById(testSpaceId)).thenReturn(true);
+        when(reservationRepository.countBySpaceId(testSpaceId)).thenReturn(0L);
         doNothing().when(spaceRepository).deleteById(testSpaceId);
 
         // Act
@@ -240,12 +246,36 @@ class SpaceServiceTest {
     }
 
     @Test
+    void testDeleteSpace_WithAssociatedReservations_Throws() {
+        // Arrange
+        when(spaceRepository.existsById(testSpaceId)).thenReturn(true);
+        when(reservationRepository.countBySpaceId(testSpaceId)).thenReturn(3L);
+
+        // Act & Assert
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> spaceService.deleteSpace(testSpaceId));
+        assertTrue(ex.getMessage().contains("3 associated reservation"));
+        verify(spaceRepository, never()).deleteById(any());
+    }
+
+    @Test
     void testExistsByName_True() {
         // Arrange
         when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
 
         // Act
         boolean result = spaceService.existsByName("Cancha de Fútbol");
+
+        // Assert
+        assertTrue(result);
+    }
+
+    @Test
+    void testExistsByName_CaseInsensitive() {
+        // Arrange
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
+
+        // Act
+        boolean result = spaceService.existsByName("cancha DE fútbol");
 
         // Assert
         assertTrue(result);
@@ -318,6 +348,70 @@ class SpaceServiceTest {
     }
 
     @Test
+    void testSearchSpaces_ByLocation() {
+        // Arrange
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, "Sector", null, true);
+
+        // Assert
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_BySpaceTypeId() {
+        // Arrange
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
+
+        // Act
+        List<SpaceDto> match = spaceService.searchSpaces(null, 1, null, null, null, null, true);
+        List<SpaceDto> noMatch = spaceService.searchSpaces(null, 2, null, null, null, null, true);
+
+        // Assert
+        assertEquals(1, match.size());
+        assertEquals(0, noMatch.size());
+    }
+
+    @Test
+    void testSearchSpaces_ActiveOnlyFalse_IncludesInactiveIfMatch() {
+        // Arrange
+        Space inactive = new Space();
+        inactive.setSpaceId(UUID.randomUUID());
+        inactive.setName("Desc Gym");
+        inactive.setActive(false);
+        inactive.setDescription("Gimnasio techado");
+        inactive.setCapacity(30);
+        inactive.setSpaceTypeId((short)1);
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(inactive));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces("gimnasio", null, null, null, null, null, false);
+
+        // Assert
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_ByDescriptionMatch() {
+        // Arrange
+        Space s = new Space();
+        s.setSpaceId(UUID.randomUUID());
+        s.setName("Otro");
+        s.setDescription("Cancha multiuso");
+        s.setActive(true);
+        s.setCapacity(10);
+        s.setSpaceTypeId((short)1);
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(s));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces("cancha", null, null, null, null, null, true);
+
+        // Assert
+        assertEquals(1, result.size());
+    }
+
+    @Test
     void testSearchSpaces_ByOutdoor() {
         // Arrange
         when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
@@ -332,6 +426,27 @@ class SpaceServiceTest {
     }
 
     @Test
+    void testSearchSpaces_ByOutdoorFalse_OnlyIndoor() {
+        // Arrange
+        Space indoor = new Space();
+        indoor.setSpaceId(UUID.randomUUID());
+        indoor.setName("Salon");
+        indoor.setActive(true);
+        indoor.setOutdoor(false);
+        indoor.setCapacity(30);
+        indoor.setSpaceTypeId((short)1);
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace, indoor));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, null, false, true);
+
+        // Assert
+        assertEquals(1, result.size());
+        assertFalse(result.get(0).isOutdoor());
+        assertEquals("Salon", result.get(0).getName());
+    }
+
+    @Test
     void testSearchSpaces_NoMatches() {
         // Arrange
         when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
@@ -342,6 +457,107 @@ class SpaceServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(0, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_ActiveOnlyTrue_ExcludesInactiveMatch() {
+        // Arrange
+        Space inactive = new Space();
+        inactive.setSpaceId(UUID.randomUUID());
+        inactive.setName("Gimnasio");
+        inactive.setDescription("Gran gimnasio");
+        inactive.setActive(false);
+        inactive.setCapacity(20);
+        inactive.setSpaceTypeId((short)1);
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(inactive));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces("gimnasio", null, null, null, null, null, true);
+
+        // Assert
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_LocationProvided_NullLocationExcluded() {
+        // Arrange
+        Space withNullLocation = new Space();
+        withNullLocation.setSpaceId(UUID.randomUUID());
+        withNullLocation.setName("Sin ubicacion");
+        withNullLocation.setActive(true);
+        withNullLocation.setOutdoor(true);
+        withNullLocation.setCapacity(10);
+        withNullLocation.setSpaceTypeId((short)1);
+        withNullLocation.setLocation(null);
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(withNullLocation));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, "Sector", null, true);
+
+        // Assert
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_MaxCapacityExcludes() {
+        // Arrange
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, 40, null, null, true);
+
+        // Assert
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_MinCapacityExcludes() {
+        // Arrange
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, 60, null, null, null, true);
+
+        // Assert
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_NameSearchWithNullDescription_NoMatch() {
+        // Arrange
+        Space s = new Space();
+        s.setSpaceId(UUID.randomUUID());
+        s.setName("Otro");
+        s.setDescription(null);
+        s.setActive(true);
+        s.setCapacity(10);
+        s.setSpaceTypeId((short)1);
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(s));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces("cancha", null, null, null, null, null, true);
+
+        // Assert
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_OutdoorNull_DoesNotFilter() {
+        // Arrange
+        Space indoor = new Space();
+        indoor.setSpaceId(UUID.randomUUID());
+        indoor.setName("Salon");
+        indoor.setActive(true);
+        indoor.setOutdoor(false);
+        indoor.setCapacity(30);
+        indoor.setSpaceTypeId((short)1);
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace, indoor));
+
+        // Act
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, null, null, true);
+
+        // Assert
+        assertEquals(2, result.size());
     }
 
     @Test
@@ -377,6 +593,59 @@ class SpaceServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(0, result.size()); // Espacio ocupado, no debe aparecer
+    }
+
+    @Test
+    void testFindAvailableSpaces_FiltersByMinCapacity() {
+        // Arrange
+        String startDate = OffsetDateTime.now().plusDays(1).toString();
+        String endDate = OffsetDateTime.now().plusDays(1).plusHours(2).toString();
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
+        when(reservationRepository.findOccupiedSpaceIds(any(), any())).thenReturn(Arrays.asList());
+
+        // Act
+        List<SpaceDto> none = spaceService.findAvailableSpaces(startDate, endDate, null, 100);
+
+        // Assert
+        assertEquals(0, none.size());
+    }
+
+    @Test
+    void testFindAvailableSpaces_FiltersBySpaceTypeId() {
+        // Arrange
+        String startDate = OffsetDateTime.now().plusDays(1).toString();
+        String endDate = OffsetDateTime.now().plusDays(1).plusHours(2).toString();
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
+        when(reservationRepository.findOccupiedSpaceIds(any(), any())).thenReturn(Arrays.asList());
+
+        // Act
+        List<SpaceDto> match = spaceService.findAvailableSpaces(startDate, endDate, 1, null);
+        List<SpaceDto> noMatch = spaceService.findAvailableSpaces(startDate, endDate, 2, null);
+
+        // Assert
+        assertEquals(1, match.size());
+        assertEquals(0, noMatch.size());
+    }
+
+    @Test
+    void testFindAvailableSpaces_ExcludesInactiveSpaces() {
+        // Arrange
+        String startDate = OffsetDateTime.now().plusDays(1).toString();
+        String endDate = OffsetDateTime.now().plusDays(1).plusHours(2).toString();
+        Space inactive = new Space();
+        inactive.setSpaceId(UUID.randomUUID());
+        inactive.setName("Inactive");
+        inactive.setActive(false);
+        inactive.setCapacity(50);
+        inactive.setSpaceTypeId((short)1);
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(inactive));
+        when(reservationRepository.findOccupiedSpaceIds(any(), any())).thenReturn(Arrays.asList());
+
+        // Act
+        List<SpaceDto> result = spaceService.findAvailableSpaces(startDate, endDate, null, null);
+
+        // Assert
+        assertEquals(0, result.size());
     }
 
     @Test

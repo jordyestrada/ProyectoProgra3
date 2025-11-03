@@ -290,4 +290,61 @@ class SpaceScheduleServiceTest {
         assertNotNull(result);
         verify(scheduleRepository, times(1)).save(any(SpaceSchedule.class));
     }
+
+    @Test
+    void testCreateSchedule_DefaultsTimeFrom_WhenNull() {
+        // Arrange
+        CreateScheduleDto dto = new CreateScheduleDto();
+        dto.setWeekday((short) 1);
+        dto.setTimeFrom(null); // debe usar 06:00 por defecto
+        dto.setTimeTo(LocalTime.of(10, 0));
+
+        when(spaceRepository.findById(testSpaceId)).thenReturn(Optional.of(testSpace));
+        when(scheduleRepository.findBySpace_SpaceIdAndWeekday(testSpaceId, dto.getWeekday()))
+                .thenReturn(List.of());
+        // save debe devolver el mismo objeto con id asignado para poder verificar las horas
+        when(scheduleRepository.save(any(SpaceSchedule.class))).thenAnswer(inv -> {
+            SpaceSchedule s = inv.getArgument(0);
+            s.setScheduleId(100L);
+            return s;
+        });
+
+        // Act
+        ScheduleDto result = scheduleService.createSchedule(testSpaceId, dto);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(LocalTime.of(6, 0), result.getTimeFrom());
+        assertEquals(LocalTime.of(10, 0), result.getTimeTo());
+        assertEquals(testSpaceId, result.getSpaceId());
+        assertEquals((short) 1, result.getWeekday());
+    }
+
+    @Test
+    void testCreateSchedule_DefaultsTimeTo_WhenNull() {
+        // Arrange
+        CreateScheduleDto dto = new CreateScheduleDto();
+        dto.setWeekday((short) 1);
+        dto.setTimeFrom(LocalTime.of(7, 0));
+        dto.setTimeTo(null); // debe usar 20:00 por defecto
+
+        when(spaceRepository.findById(testSpaceId)).thenReturn(Optional.of(testSpace));
+        when(scheduleRepository.findBySpace_SpaceIdAndWeekday(testSpaceId, dto.getWeekday()))
+                .thenReturn(List.of());
+        when(scheduleRepository.save(any(SpaceSchedule.class))).thenAnswer(inv -> {
+            SpaceSchedule s = inv.getArgument(0);
+            s.setScheduleId(101L);
+            return s;
+        });
+
+        // Act
+        ScheduleDto result = scheduleService.createSchedule(testSpaceId, dto);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(LocalTime.of(7, 0), result.getTimeFrom());
+        assertEquals(LocalTime.of(20, 0), result.getTimeTo());
+        assertEquals(testSpaceId, result.getSpaceId());
+        assertEquals((short) 1, result.getWeekday());
+    }
 }

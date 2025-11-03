@@ -217,4 +217,32 @@ class ReservationAutoStatusServiceTest {
         // Debe contener una fecha en formato dd/MM/yyyy HH:mm
         assertTrue(expiredPendingReservation.getCancelReason().matches(".*\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}.*"));
     }
+
+    @Test
+    void testAutoCancelExpiredPendingReservations_PreparationException_Handled() {
+        // Arrange: reserva con startsAt null para provocar excepción al formatear fecha en cancelReason
+        Reservation badReservation = new Reservation();
+        badReservation.setReservationId(UUID.randomUUID());
+        badReservation.setUserId(UUID.randomUUID());
+        badReservation.setSpaceId(UUID.randomUUID());
+        badReservation.setStartsAt(null); // causará NPE al formatear
+        badReservation.setEndsAt(OffsetDateTime.now().plusHours(1));
+        badReservation.setStatus("PENDING");
+        badReservation.setCurrency("CRC");
+        // updatedAt queda null para verificar que no se seteó por la excepción
+
+        List<Reservation> expiredReservations = Arrays.asList(badReservation);
+        when(reservationRepository.findExpiredPendingReservations(any(OffsetDateTime.class)))
+                .thenReturn(expiredReservations);
+        when(reservationRepository.saveAll(anyList())).thenReturn(expiredReservations);
+
+        // Act: no debe lanzar excepción aunque falle la preparación de una reserva
+        assertDoesNotThrow(() -> autoStatusService.autoCancelExpiredPendingReservations());
+
+        // Assert: se debe intentar guardar, y la reserva quedó con estado cancelado, pero sin cancelReason/updatedAt
+        verify(reservationRepository, times(1)).saveAll(anyList());
+        assertEquals("CANCELLED", badReservation.getStatus(), "Debe marcar estado CANCELLED antes del fallo");
+        assertNull(badReservation.getCancelReason(), "No debe establecer cancelReason cuando falla el formateo");
+        assertNull(badReservation.getUpdatedAt(), "No debe actualizar updatedAt si falló antes");
+    }
 }

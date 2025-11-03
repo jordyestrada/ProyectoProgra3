@@ -3,10 +3,15 @@ package cr.una.reservas_municipales.service;
 import cr.una.reservas_municipales.dto.UserDto;
 import cr.una.reservas_municipales.model.Role;
 import cr.una.reservas_municipales.model.User;
+import cr.una.reservas_municipales.notification.NotificationEvent;
+import cr.una.reservas_municipales.notification.NotificationSender;
+import cr.una.reservas_municipales.notification.NotificationType;
+import cr.una.reservas_municipales.repository.RoleRepository;
 import cr.una.reservas_municipales.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,12 +30,19 @@ class UserServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private RoleRepository roleRepository;
+
+    @Mock
+    private NotificationSender notificationSender;
+
     @InjectMocks
     private UserService userService;
 
     private UUID testUserId;
     private User testUser;
     private Role testRole;
+    private Role adminRole;
 
     @BeforeEach
     void setUp() {
@@ -39,6 +51,10 @@ class UserServiceTest {
         testRole = new Role();
         testRole.setCode("USER");
         testRole.setName("Usuario");
+
+    adminRole = new Role();
+    adminRole.setCode("ADMIN");
+    adminRole.setName("Administrador");
 
         testUser = new User();
         testUser.setUserId(testUserId);
@@ -149,5 +165,100 @@ class UserServiceTest {
         assertEquals("88888888", dto.getPhone());
         assertTrue(dto.isActive());
         assertEquals("USER", dto.getRoleCode());
+    }
+
+    // ================= changeUserRole =================
+    @Test
+    void testChangeUserRole_Success_SendsNotification() {
+        // Arrange
+        UUID uid = testUserId;
+        when(userRepository.findById(uid)).thenReturn(Optional.of(testUser));
+        when(roleRepository.findById("ADMIN")).thenReturn(Optional.of(adminRole));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // Act
+        UserDto result = userService.changeUserRole(uid, "ADMIN");
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("ADMIN", result.getRoleCode());
+        verify(userRepository).save(argThat(u -> u.getRole() != null && "ADMIN".equals(u.getRole().getCode())));
+
+        ArgumentCaptor<NotificationEvent> captor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(notificationSender, times(1)).send(captor.capture());
+        NotificationEvent event = captor.getValue();
+        assertEquals(NotificationType.USER_ROLE_CHANGED, event.getType());
+        assertEquals(testUserId, event.getUserId());
+        assertEquals(testUser.getEmail(), event.getEmail());
+        assertNotNull(event.getOccurredAt());
+        assertNotNull(event.getData());
+        assertEquals("Test User", event.getData().get("userName"));
+        assertEquals("USER", event.getData().get("oldRole"));
+        assertEquals("ADMIN", event.getData().get("newRole"));
+        assertEquals("Administrador", event.getData().get("newRoleName"));
+    }
+
+    @Test
+    void testChangeUserRole_UserNotFound() {
+        UUID uid = UUID.randomUUID();
+        when(userRepository.findById(uid)).thenReturn(Optional.empty());
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> userService.changeUserRole(uid, "ADMIN"));
+        assertTrue(ex.getMessage().contains("Usuario no encontrado"));
+        verify(notificationSender, never()).send(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void testChangeUserRole_RoleNotFound() {
+        UUID uid = testUserId;
+        when(userRepository.findById(uid)).thenReturn(Optional.of(testUser));
+        when(roleRepository.findById("ADMIN")).thenReturn(Optional.empty());
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> userService.changeUserRole(uid, "ADMIN"));
+        assertTrue(ex.getMessage().contains("Rol no encontrado"));
+        verify(notificationSender, never()).send(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void testChangeUserRole_SameRole_Throws() {
+        UUID uid = testUserId;
+        when(userRepository.findById(uid)).thenReturn(Optional.of(testUser));
+        when(roleRepository.findById("USER")).thenReturn(Optional.of(testRole));
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> userService.changeUserRole(uid, "USER"));
+        assertTrue(ex.getMessage().contains("ya tiene el rol"));
+        verify(notificationSender, never()).send(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void testChangeUserRole_NotificationThrows_NoRollback() {
+        UUID uid = testUserId;
+        when(userRepository.findById(uid)).thenReturn(Optional.of(testUser));
+        when(roleRepository.findById("ADMIN")).thenReturn(Optional.of(adminRole));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("smtp down")).when(notificationSender).send(any(NotificationEvent.class));
+
+        UserDto result = userService.changeUserRole(uid, "ADMIN");
+
+        assertNotNull(result);
+        assertEquals("ADMIN", result.getRoleCode());
+        verify(userRepository, times(1)).save(any(User.class));
+        verify(notificationSender, times(1)).send(any(NotificationEvent.class));
+    }
+
+    // listAll: user with null role => roleCode null
+    @Test
+    void testListAll_UserWithNullRole_RoleCodeNull() {
+        User u = new User();
+        u.setUserId(UUID.randomUUID());
+        u.setEmail("norole@test.com");
+        u.setFullName("No Role");
+        u.setActive(true);
+        u.setRole(null);
+
+        when(userRepository.findAll()).thenReturn(java.util.List.of(u));
+        java.util.List<UserDto> result = userService.listAll();
+        assertEquals(1, result.size());
+        assertNull(result.get(0).getRoleCode());
     }
 }

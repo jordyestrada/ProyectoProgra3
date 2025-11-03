@@ -95,4 +95,90 @@ class CancellationNotAllowedExceptionTest {
         assertNotEquals(exception1.getMessage(), exception2.getMessage());
         assertNotSame(exception1, exception2);
     }
+
+    @Test
+    void testSuperConstructorIsInvokedCorrectly() {
+        String testMessage = "Test message for super constructor";
+        
+        CancellationNotAllowedException exception = new CancellationNotAllowedException(testMessage);
+        
+        // Verifica que el mensaje se pasó correctamente al constructor padre
+        assertEquals(testMessage, exception.getMessage());
+        // Verifica que es una instancia de RuntimeException (clase padre)
+        assertTrue(exception instanceof RuntimeException);
+    }
+
+    @Test
+    void testExceptionWithSpecialCharacters() {
+        String specialMessage = "Cancelación no permitida: áéíóú ñ @#$%&*()";
+        
+        CancellationNotAllowedException exception = new CancellationNotAllowedException(specialMessage);
+        
+        assertEquals(specialMessage, exception.getMessage());
+    }
+
+    @Test
+    void testExceptionWithNewLineCharacters() {
+        String messageWithNewLines = "Primera línea\nSegunda línea\nTercera línea";
+        
+        CancellationNotAllowedException exception = new CancellationNotAllowedException(messageWithNewLines);
+        
+        assertEquals(messageWithNewLines, exception.getMessage());
+        assertTrue(exception.getMessage().contains("\n"));
+    }
+
+    @Test
+    void testExceptionMessageImmutability() {
+        String originalMessage = "Mensaje original";
+        
+        CancellationNotAllowedException exception = new CancellationNotAllowedException(originalMessage);
+        
+        // El mensaje de la excepción debe ser inmutable
+        assertEquals(originalMessage, exception.getMessage());
+        // Modificar la variable original no debe afectar el mensaje de la excepción
+        String modifiedOriginal = originalMessage + " modificado";
+        assertEquals("Mensaje original", exception.getMessage());
+        assertNotEquals(modifiedOriginal, exception.getMessage());
+    }
+
+    @Test
+    void testConstructorCallsSuperWithExactParameter() {
+        // Test explícito para verificar que super(message) recibe el parámetro correcto
+        String[] testMessages = {
+            "Test 1",
+            "Test 2",
+            null,
+            "",
+            "Message with spaces",
+            "123456789"
+        };
+        
+        for (String msg : testMessages) {
+            CancellationNotAllowedException exception = new CancellationNotAllowedException(msg);
+            assertEquals(msg, exception.getMessage());
+        }
+    }
+
+    @Test
+    void testExceptionToString() {
+        String message = "Cancelación no permitida";
+        
+        CancellationNotAllowedException exception = new CancellationNotAllowedException(message);
+        
+        String toString = exception.toString();
+        assertNotNull(toString);
+        assertTrue(toString.contains("CancellationNotAllowedException"));
+    }
+
+    @Test
+    void testExceptionInCatchBlock() {
+        String expectedMessage = "No se puede cancelar";
+        
+        try {
+            throw new CancellationNotAllowedException(expectedMessage);
+        } catch (CancellationNotAllowedException e) {
+            assertEquals(expectedMessage, e.getMessage());
+            assertNotNull(e);
+        }
+    }
 }
