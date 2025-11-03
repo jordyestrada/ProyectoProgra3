@@ -704,13 +704,13 @@ class ReservationControllerTest {
         void testExportUserReservationsToExcel_Success_DirectCall() throws Exception {
                 ReservationController controller = new ReservationController(reservationService, reservationExportService, userRepository);
                 org.springframework.security.core.Authentication auth = mock(org.springframework.security.core.Authentication.class);
-                when(auth.getName()).thenReturn("user@example.com");
+                when(auth.getName()).thenReturn(userId.toString());
 
                 User u = new User();
                 u.setUserId(userId);
                 u.setEmail("user@example.com");
                 u.setFullName("Test User");
-                when(userRepository.findByEmail("user@example.com")).thenReturn(java.util.Optional.of(u));
+                when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(u));
 
                 when(reservationService.getReservationsByUserWithSpaceDetails(userId)).thenReturn(java.util.List.of());
                 when(reservationService.generateReservationSummary(userId)).thenReturn(cr.una.reservas_municipales.dto.ReservationSummaryDto.builder().build());

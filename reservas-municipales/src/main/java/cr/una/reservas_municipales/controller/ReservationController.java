@@ -350,18 +350,21 @@ public class ReservationController {
      * GET /api/reservations/export/excel - Exportar reservas del usuario autenticado a Excel
      */
     @GetMapping("/export/excel")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
-    public ResponseEntity<byte[]> exportUserReservationsToExcel(Authentication authentication) {
-        log.info("GET /api/reservations/export/excel - Exportando reservas del usuario autenticado");
+@PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
+public ResponseEntity<byte[]> exportUserReservationsToExcel(Authentication authentication) {
+    log.info("GET /api/reservations/export/excel - Exportando reservas del usuario autenticado");
+    
+    try {
+        // authentication.getName() retorna el UUID, NO el email
+        String userId = authentication.getName();
+        log.info("Usuario solicitando exportación (UUID): {}", userId);
         
-        try {
-            String userEmail = authentication.getName();
-            log.info("Usuario solicitando exportación: {}", userEmail);
-            
-            // Obtener el usuario por email
-            User user = userRepository.findByEmail(userEmail)
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userEmail));
-            
+        // ✅ CAMBIO: Buscar por UUID en lugar de email
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userId));
+        
+        log.info("Usuario encontrado: {} ({})", user.getFullName(), user.getEmail());
+        
             // Obtener reservas con detalles del espacio
             List<ReservationWithSpaceDto> reservations = reservationService.getReservationsByUserWithSpaceDetails(user.getUserId());
             
