@@ -471,16 +471,19 @@ public class EmailNotificationSender implements NotificationSender {
     }
     
     private String buildHtmlRoleChanged(String userName, String oldRole, String newRole, String newRoleName) {
+        // Normalizar roles (remover ROLE_ si existe) para comparación
+        String normalizedRole = newRole.replace("ROLE_", "");
+        
         // Determinar el emoji y color según el rol
-        String roleEmoji = switch (newRole) {
-            case "ROLE_ADMIN" -> "👑";
-            case "ROLE_SUPERVISOR" -> "⭐";
+        String roleEmoji = switch (normalizedRole) {
+            case "ADMIN" -> "👑";
+            case "SUPERVISOR" -> "⭐";
             default -> "👤";
         };
         
-        String roleColor = switch (newRole) {
-            case "ROLE_ADMIN" -> "#dc2626"; // Rojo
-            case "ROLE_SUPERVISOR" -> "#ea580c"; // Naranja
+        String roleColor = switch (normalizedRole) {
+            case "ADMIN" -> "#dc2626"; // Rojo
+            case "SUPERVISOR" -> "#ea580c"; // Naranja
             default -> "#2563eb"; // Azul
         };
         
@@ -583,8 +586,11 @@ public class EmailNotificationSender implements NotificationSender {
     }
     
     private String getPermissionsHtml(String role) {
-        return switch (role) {
-            case "ROLE_ADMIN" -> """
+        // Normalizar rol para comparación
+        String normalizedRole = role.replace("ROLE_", "");
+        
+        return switch (normalizedRole) {
+            case "ADMIN" -> """
                 <ul style="margin:8px 0 0 0;padding-left:24px;font-size:13px;line-height:24px;color:#0c4a6e;">
                     <li>Gestión completa de usuarios y roles</li>
                     <li>Administración de espacios y horarios</li>
@@ -594,7 +600,7 @@ public class EmailNotificationSender implements NotificationSender {
                     <li>Exportación de datos de cualquier usuario</li>
                 </ul>
                 """;
-            case "ROLE_SUPERVISOR" -> """
+            case "SUPERVISOR" -> """
                 <ul style="margin:8px 0 0 0;padding-left:24px;font-size:13px;line-height:24px;color:#0c4a6e;">
                     <li>Visualización y gestión de reservas</li>
                     <li>Gestión de horarios de espacios</li>

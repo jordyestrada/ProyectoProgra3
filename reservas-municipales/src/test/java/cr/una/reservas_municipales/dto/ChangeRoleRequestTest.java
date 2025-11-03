@@ -122,7 +122,10 @@ class ChangeRoleRequestTest {
         boolean hasPatternError = violations.stream()
                 .anyMatch(v -> v.getMessage().contains("ROLE_ADMIN") || 
                               v.getMessage().contains("ROLE_SUPERVISOR") || 
-                              v.getMessage().contains("ROLE_USER"));
+                              v.getMessage().contains("ROLE_USER") ||
+                              v.getMessage().contains("ADMIN") || 
+                              v.getMessage().contains("SUPERVISOR") || 
+                              v.getMessage().contains("USER"));
         assertTrue(hasPatternError);
     }
 

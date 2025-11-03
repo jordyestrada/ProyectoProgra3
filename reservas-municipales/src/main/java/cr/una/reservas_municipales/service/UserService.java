@@ -40,21 +40,25 @@ public class UserService {
     public UserDto changeUserRole(UUID userId, String newRoleCode) {
         log.info("Intentando cambiar rol del usuario {} a {}", userId, newRoleCode);
         
+        // Normalizar el código del rol: remover prefijo "ROLE_" si existe
+        // La BD tiene los roles como: ADMIN, SUPERVISOR, USER (sin ROLE_)
+        String normalizedRoleCode = newRoleCode.replace("ROLE_", "");
+        
         // Buscar el usuario
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + userId));
         
         // Buscar el nuevo rol
-        Role newRole = roleRepository.findById(newRoleCode)
-                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + newRoleCode));
+        Role newRole = roleRepository.findById(normalizedRoleCode)
+                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + normalizedRoleCode));
         
         // Guardar el rol anterior para el log y la notificación
         String oldRoleCode = user.getRole().getCode();
         String oldRoleName = user.getRole().getName();
         
         // Verificar si el rol es diferente
-        if (oldRoleCode.equals(newRoleCode)) {
-            throw new RuntimeException("El usuario ya tiene el rol: " + newRoleCode);
+        if (oldRoleCode.equals(normalizedRoleCode)) {
+            throw new RuntimeException("El usuario ya tiene el rol: " + normalizedRoleCode);
         }
         
         // Actualizar el rol
@@ -63,7 +67,7 @@ public class UserService {
         User updatedUser = userRepository.save(user);
         
         log.info("Rol del usuario {} cambiado de {} a {}", 
-                user.getEmail(), oldRoleCode, newRoleCode);
+                user.getEmail(), oldRoleCode, normalizedRoleCode);
         
         // Enviar notificación por correo
         try {
