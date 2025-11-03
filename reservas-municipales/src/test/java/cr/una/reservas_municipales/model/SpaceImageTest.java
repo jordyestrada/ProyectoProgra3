@@ -109,4 +109,22 @@ class SpaceImageTest {
             SpaceImage.class.getDeclaredField("createdAt");
         });
     }
+
+    @Test
+    void testOnCreate() {
+        // Arrange
+        SpaceImage spaceImage = new SpaceImage();
+        spaceImage.setSpaceId(UUID.randomUUID());
+        spaceImage.setUrl("https://example.com/image.jpg");
+        spaceImage.setMain(false);
+        spaceImage.setOrd(1);
+
+        // Act
+        spaceImage.onCreate(); // Simula @PrePersist
+
+        // Assert
+        assertNotNull(spaceImage.getCreatedAt());
+        assertTrue(spaceImage.getCreatedAt().isBefore(OffsetDateTime.now().plusSeconds(1)));
+        assertTrue(spaceImage.getCreatedAt().isAfter(OffsetDateTime.now().minusSeconds(1)));
+    }
 }

@@ -430,4 +430,174 @@ class SpaceControllerTest {
                 .andExpect(jsonPath("$.error").value("Failed to delete space"))
                 .andExpect(jsonPath("$.message").value("unknown"));
     }
+
+    // ===================== Image endpoints tests =====================
+
+    @Test
+    void testCreateSpaceWithImages_Success() throws Exception {
+        SpaceDto createdSpace = new SpaceDto();
+        createdSpace.setSpaceId(spaceId);
+        createdSpace.setName("Cancha con Imágenes");
+        createdSpace.setCapacity(100);
+
+        when(spaceService.existsByName(anyString())).thenReturn(false);
+        when(spaceService.createSpaceWithImages(any(SpaceDto.class), anyList())).thenReturn(createdSpace);
+
+        org.springframework.mock.web.MockMultipartFile image1 = 
+            new org.springframework.mock.web.MockMultipartFile("images", "test1.jpg", "image/jpeg", "image1".getBytes());
+        org.springframework.mock.web.MockMultipartFile image2 = 
+            new org.springframework.mock.web.MockMultipartFile("images", "test2.jpg", "image/jpeg", "image2".getBytes());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/spaces/with-images")
+                .file(image1)
+                .file(image2)
+                .param("name", "Cancha con Imágenes")
+                .param("capacity", "100")
+                .param("location", "Parque Central")
+                .param("outdoor", "true")
+                .param("description", "Cancha con fotos"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.spaceId").value(spaceId.toString()))
+                .andExpect(jsonPath("$.name").value("Cancha con Imágenes"));
+    }
+
+    @Test
+    void testCreateSpaceWithImages_DuplicateName() throws Exception {
+        when(spaceService.existsByName(anyString())).thenReturn(true);
+
+        org.springframework.mock.web.MockMultipartFile image = 
+            new org.springframework.mock.web.MockMultipartFile("images", "test.jpg", "image/jpeg", "image".getBytes());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/spaces/with-images")
+                .file(image)
+                .param("name", "Existing Space")
+                .param("capacity", "100"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Space name already exists"));
+    }
+
+    @Test
+    void testCreateSpaceWithImages_WithoutImages() throws Exception {
+        SpaceDto createdSpace = new SpaceDto();
+        createdSpace.setSpaceId(spaceId);
+        createdSpace.setName("Cancha sin Imágenes");
+
+        when(spaceService.existsByName(anyString())).thenReturn(false);
+        when(spaceService.createSpaceWithImages(any(SpaceDto.class), any())).thenReturn(createdSpace);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/spaces/with-images")
+                .param("name", "Cancha sin Imágenes")
+                .param("capacity", "50"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.spaceId").value(spaceId.toString()));
+    }
+
+    @Test
+    void testCreateSpaceWithImages_Exception() throws Exception {
+        when(spaceService.existsByName(anyString())).thenReturn(false);
+        when(spaceService.createSpaceWithImages(any(SpaceDto.class), any()))
+            .thenThrow(new RuntimeException("Upload failed"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/spaces/with-images")
+                .param("name", "Test Space")
+                .param("capacity", "100"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("Failed to create space with images"))
+                .andExpect(jsonPath("$.message").value("Upload failed"));
+    }
+
+    @Test
+    void testAddImagesToSpace_Success() throws Exception {
+        SpaceDto updatedSpace = new SpaceDto();
+        updatedSpace.setSpaceId(spaceId);
+        updatedSpace.setName("Space with New Images");
+
+        when(spaceService.addImagesToSpace(eq(spaceId), anyList())).thenReturn(updatedSpace);
+
+        org.springframework.mock.web.MockMultipartFile image1 = 
+            new org.springframework.mock.web.MockMultipartFile("images", "new1.jpg", "image/jpeg", "new1".getBytes());
+        org.springframework.mock.web.MockMultipartFile image2 = 
+            new org.springframework.mock.web.MockMultipartFile("images", "new2.jpg", "image/jpeg", "new2".getBytes());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/spaces/{id}/images", spaceId)
+                .file(image1)
+                .file(image2))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.spaceId").value(spaceId.toString()))
+                .andExpect(jsonPath("$.name").value("Space with New Images"));
+    }
+
+    @Test
+    void testAddImagesToSpace_SpaceNotFound() throws Exception {
+        when(spaceService.addImagesToSpace(eq(spaceId), anyList()))
+            .thenThrow(new RuntimeException("Space not found: " + spaceId));
+
+        org.springframework.mock.web.MockMultipartFile image = 
+            new org.springframework.mock.web.MockMultipartFile("images", "test.jpg", "image/jpeg", "test".getBytes());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/spaces/{id}/images", spaceId)
+                .file(image))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testAddImagesToSpace_RuntimeException() throws Exception {
+        // Test RuntimeException path (404)
+        when(spaceService.addImagesToSpace(eq(spaceId), anyList()))
+            .thenThrow(new RuntimeException("Upload error"));
+        
+        org.springframework.mock.web.MockMultipartFile image = 
+            new org.springframework.mock.web.MockMultipartFile("images", "test.jpg", "image/jpeg", "test".getBytes());
+        
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/spaces/{id}/images", spaceId)
+                .file(image))
+                .andExpect(status().isNotFound()); // 404 for RuntimeException
+    }
+
+    @Test
+    void testAddImagesToSpace_Exception() throws Exception {
+        // Test generic Exception path (500)
+        when(spaceService.addImagesToSpace(eq(spaceId), anyList()))
+            .thenAnswer(invocation -> sneakyThrow(new Exception("IO error")));
+        
+        org.springframework.mock.web.MockMultipartFile image = 
+            new org.springframework.mock.web.MockMultipartFile("images", "test.jpg", "image/jpeg", "test".getBytes());
+        
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/spaces/{id}/images", spaceId)
+                .file(image))
+                .andExpect(status().isInternalServerError()) // 500 for generic Exception
+                .andExpect(jsonPath("$.error").value("Failed to add images"))
+                .andExpect(jsonPath("$.message").value("IO error"));
+    }
+
+    @Test
+    void testDeleteSpaceImage_Success() throws Exception {
+        Long imageId = 123L;
+        when(spaceService.deleteSpaceImage(eq(spaceId), eq(imageId))).thenReturn(true);
+
+        mockMvc.perform(delete("/api/spaces/{spaceId}/images/{imageId}", spaceId, imageId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Image deleted successfully"));
+    }
+
+    @Test
+    void testDeleteSpaceImage_NotFound() throws Exception {
+        Long imageId = 999L;
+        when(spaceService.deleteSpaceImage(eq(spaceId), eq(imageId))).thenReturn(false);
+
+        mockMvc.perform(delete("/api/spaces/{spaceId}/images/{imageId}", spaceId, imageId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testDeleteSpaceImage_Exception() throws Exception {
+        Long imageId = 123L;
+        when(spaceService.deleteSpaceImage(eq(spaceId), eq(imageId)))
+            .thenThrow(new RuntimeException("Delete failed"));
+
+        mockMvc.perform(delete("/api/spaces/{spaceId}/images/{imageId}", spaceId, imageId))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("Failed to delete image"))
+                .andExpect(jsonPath("$.message").value("Delete failed"));
+    }
 }

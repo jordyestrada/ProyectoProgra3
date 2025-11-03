@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -28,4 +30,7 @@ public class SpaceDto {
     
     @Size(max = 1000, message = "Description must not exceed 1000 characters")
     private String description;
+    
+    // Lista de imágenes asociadas al espacio
+    private List<SpaceImageDto> images = new ArrayList<>();
 }

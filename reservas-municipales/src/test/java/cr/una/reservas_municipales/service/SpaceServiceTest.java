@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +22,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class SpaceServiceTest {
@@ -30,6 +32,12 @@ class SpaceServiceTest {
 
     @Mock
     private ReservationRepository reservationRepository;
+
+    @Mock
+    private cr.una.reservas_municipales.repository.SpaceImageRepository spaceImageRepository;
+
+    @Mock
+    private CloudinaryService cloudinaryService;
 
     @InjectMocks
     private SpaceService spaceService;
@@ -61,6 +69,10 @@ class SpaceServiceTest {
         testSpaceDto.setOutdoor(true);
         testSpaceDto.setActive(true);
         testSpaceDto.setDescription("Cancha de fútbol con césped sintético");
+        
+        // Mock SpaceImageRepository para retornar lista vacía por defecto (lenient para tests que no lo usan)
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(any(UUID.class)))
+            .thenReturn(java.util.Collections.emptyList());
     }
 
     @Test
@@ -659,5 +671,761 @@ class SpaceServiceTest {
         });
 
         assertTrue(exception.getMessage().contains("Invalid date format"));
+    }
+
+    @Test
+    void testCreateSpaceWithImages_Success() {
+        // Arrange
+        SpaceDto spaceDto = new SpaceDto();
+        spaceDto.setName("Cancha con Imágenes");
+        spaceDto.setCapacity(100);
+        spaceDto.setLocation("Parque Central");
+        spaceDto.setOutdoor(true);
+        spaceDto.setDescription("Cancha con fotos");
+
+        List<org.springframework.web.multipart.MultipartFile> imageFiles = Arrays.asList(
+            new org.springframework.mock.web.MockMultipartFile("image1", "test1.jpg", "image/jpeg", "test image 1".getBytes()),
+            new org.springframework.mock.web.MockMultipartFile("image2", "test2.jpg", "image/jpeg", "test image 2".getBytes())
+        );
+
+        lenient().when(spaceRepository.save(any(Space.class))).thenAnswer(i -> i.getArgument(0));
+        lenient().when(spaceImageRepository.saveAll(any())).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        SpaceDto result = spaceService.createSpaceWithImages(spaceDto, imageFiles);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("Cancha con Imágenes", result.getName());
+        verify(spaceRepository).save(any(Space.class));
+    }
+
+    @Test
+    void testCreateSpaceWithImages_WithNullImages() {
+        // Arrange
+        SpaceDto spaceDto = new SpaceDto();
+        spaceDto.setName("Cancha sin Imágenes");
+        spaceDto.setCapacity(50);
+
+        when(spaceRepository.save(any(Space.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        SpaceDto result = spaceService.createSpaceWithImages(spaceDto, null);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("Cancha sin Imágenes", result.getName());
+        verify(spaceRepository).save(any(Space.class));
+        verify(spaceImageRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void testCreateSpaceWithImages_WithEmptyImagesList() {
+        // Arrange
+        SpaceDto spaceDto = new SpaceDto();
+        spaceDto.setName("Cancha Vacía");
+        spaceDto.setCapacity(50);
+
+        when(spaceRepository.save(any(Space.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        SpaceDto result = spaceService.createSpaceWithImages(spaceDto, Arrays.asList());
+
+        // Assert
+        assertNotNull(result);
+        verify(spaceRepository).save(any(Space.class));
+        verify(spaceImageRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void testAddImagesToSpace_Success() {
+        // Arrange
+        UUID spaceId = UUID.randomUUID();
+        testSpace.setSpaceId(spaceId);
+
+        List<org.springframework.web.multipart.MultipartFile> imageFiles = Arrays.asList(
+            new org.springframework.mock.web.MockMultipartFile("image1", "test1.jpg", "image/jpeg", "test image".getBytes())
+        );
+
+        when(spaceRepository.findById(spaceId)).thenReturn(Optional.of(testSpace));
+        when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(spaceId)).thenReturn(Arrays.asList());
+        lenient().when(spaceImageRepository.saveAll(any())).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        SpaceDto result = spaceService.addImagesToSpace(spaceId, imageFiles);
+
+        // Assert
+        assertNotNull(result);
+        verify(spaceRepository).findById(spaceId);
+        verify(spaceImageRepository, atLeastOnce()).findBySpaceIdOrderByOrdAsc(spaceId);
+    }
+
+    @Test
+    void testAddImagesToSpace_SpaceNotFound() {
+        // Arrange
+        UUID spaceId = UUID.randomUUID();
+        List<org.springframework.web.multipart.MultipartFile> imageFiles = Arrays.asList(
+            new org.springframework.mock.web.MockMultipartFile("image", "test.jpg", "image/jpeg", "test".getBytes())
+        );
+
+        when(spaceRepository.findById(spaceId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> {
+            spaceService.addImagesToSpace(spaceId, imageFiles);
+        });
+    }
+
+    @Test
+    void testAddImagesToSpace_WithExistingImages() {
+        // Arrange
+        UUID spaceId = UUID.randomUUID();
+        testSpace.setSpaceId(spaceId);
+
+        cr.una.reservas_municipales.model.SpaceImage existingImage = new cr.una.reservas_municipales.model.SpaceImage();
+        existingImage.setImageId(1L);
+        existingImage.setSpaceId(spaceId);
+        existingImage.setUrl("http://existing.jpg");
+        existingImage.setMain(true);
+        existingImage.setOrd(0);
+
+        List<org.springframework.web.multipart.MultipartFile> newImageFiles = Arrays.asList(
+            new org.springframework.mock.web.MockMultipartFile("image", "new.jpg", "image/jpeg", "new image".getBytes())
+        );
+
+        lenient().when(spaceRepository.findById(spaceId)).thenReturn(Optional.of(testSpace));
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(spaceId))
+            .thenReturn(Arrays.asList(existingImage))
+            .thenReturn(Arrays.asList(existingImage));
+        lenient().when(spaceImageRepository.saveAll(any())).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        SpaceDto result = spaceService.addImagesToSpace(spaceId, newImageFiles);
+
+        // Assert
+        assertNotNull(result);
+        verify(spaceImageRepository, atLeastOnce()).findBySpaceIdOrderByOrdAsc(spaceId);
+    }
+
+    @Test
+    void testDeleteSpaceImage_Success() {
+        // Arrange
+        UUID spaceId = UUID.randomUUID();
+        Long imageId = 1L;
+
+        cr.una.reservas_municipales.model.SpaceImage image = new cr.una.reservas_municipales.model.SpaceImage();
+        image.setImageId(imageId);
+        image.setSpaceId(spaceId);
+        image.setUrl("http://cloudinary.com/test.jpg");
+
+        when(spaceImageRepository.findById(imageId)).thenReturn(Optional.of(image));
+        doNothing().when(spaceImageRepository).delete(image);
+
+        // Act
+        boolean result = spaceService.deleteSpaceImage(spaceId, imageId);
+
+        // Assert
+        assertTrue(result);
+        verify(spaceImageRepository).findById(imageId);
+        verify(spaceImageRepository).delete(image);
+    }
+
+    @Test
+    void testDeleteSpaceImage_ImageNotFound() {
+        // Arrange
+        UUID spaceId = UUID.randomUUID();
+        Long imageId = 999L;
+
+        when(spaceImageRepository.findById(imageId)).thenReturn(Optional.empty());
+
+        // Act
+        boolean result = spaceService.deleteSpaceImage(spaceId, imageId);
+
+        // Assert
+        assertFalse(result);
+        verify(spaceImageRepository).findById(imageId);
+        verify(spaceImageRepository, never()).delete(any());
+    }
+
+    @Test
+    void testDeleteSpaceImage_WrongSpace() {
+        // Arrange
+        UUID spaceId = UUID.randomUUID();
+        UUID differentSpaceId = UUID.randomUUID();
+        Long imageId = 1L;
+
+        cr.una.reservas_municipales.model.SpaceImage image = new cr.una.reservas_municipales.model.SpaceImage();
+        image.setImageId(imageId);
+        image.setSpaceId(differentSpaceId);
+        image.setUrl("http://cloudinary.com/test.jpg");
+
+        when(spaceImageRepository.findById(imageId)).thenReturn(Optional.of(image));
+
+        // Act
+        boolean result = spaceService.deleteSpaceImage(spaceId, imageId);
+
+        // Assert
+        assertFalse(result);
+        verify(spaceImageRepository).findById(imageId);
+        verify(spaceImageRepository, never()).delete(any());
+    }
+
+    @Test
+    void testCreateSpaceWithImages_PartialUploadFailure() {
+        // Arrange - Test cuando algunas imágenes fallan al subir
+        SpaceDto spaceDto = new SpaceDto();
+        spaceDto.setName("Test Space");
+        spaceDto.setCapacity(100);
+
+        org.springframework.mock.web.MockMultipartFile image1 = 
+            new org.springframework.mock.web.MockMultipartFile("image1", "test1.jpg", "image/jpeg", "test1".getBytes());
+        org.springframework.mock.web.MockMultipartFile image2 = 
+            new org.springframework.mock.web.MockMultipartFile("image2", "test2.jpg", "image/jpeg", "test2".getBytes());
+        
+        List<org.springframework.web.multipart.MultipartFile> imageFiles = Arrays.asList(image1, image2);
+
+        lenient().when(spaceRepository.save(any(Space.class))).thenAnswer(invocation -> {
+            Space s = invocation.getArgument(0);
+            s.setSpaceId(testSpaceId);
+            return s;
+        });
+        lenient().when(spaceImageRepository.saveAll(any())).thenAnswer(i -> i.getArgument(0));
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(any())).thenReturn(new ArrayList<>());
+
+        // Act - El servicio debe manejar errores de upload y continuar
+        try (org.mockito.MockedStatic<cr.una.reservas_municipales.util.CloudinaryUtil> mockedCloudinary = 
+                org.mockito.Mockito.mockStatic(cr.una.reservas_municipales.util.CloudinaryUtil.class)) {
+            
+            // Primera imagen se sube bien, segunda falla
+            mockedCloudinary.when(() -> 
+                cr.una.reservas_municipales.util.CloudinaryUtil.uploadImageAndGetUrl(org.mockito.ArgumentMatchers.eq(image1), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn("http://cloudinary.com/image1.jpg");
+            
+            mockedCloudinary.when(() -> 
+                cr.una.reservas_municipales.util.CloudinaryUtil.uploadImageAndGetUrl(org.mockito.ArgumentMatchers.eq(image2), org.mockito.ArgumentMatchers.anyString()))
+                .thenThrow(new java.io.IOException("Upload failed"));
+
+            SpaceDto result = spaceService.createSpaceWithImages(spaceDto, imageFiles);
+
+            // Assert - Debe crear el espacio exitosamente aunque falle una imagen
+            assertNotNull(result);
+            verify(spaceRepository).save(any(Space.class));
+        }
+    }
+
+    @Test
+    void testAddImagesToSpace_UploadFailure() {
+        // Arrange - Test cuando falla la subida de imagen
+        UUID spaceId = UUID.randomUUID();
+        testSpace.setSpaceId(spaceId);
+
+        org.springframework.mock.web.MockMultipartFile image = 
+            new org.springframework.mock.web.MockMultipartFile("image", "test.jpg", "image/jpeg", "test".getBytes());
+        
+        List<org.springframework.web.multipart.MultipartFile> imageFiles = Arrays.asList(image);
+
+        lenient().when(spaceRepository.findById(spaceId)).thenReturn(Optional.of(testSpace));
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(spaceId)).thenReturn(new ArrayList<>());
+        lenient().when(spaceImageRepository.saveAll(any())).thenAnswer(i -> i.getArgument(0));
+
+        // Act - Simular fallo en upload
+        try (org.mockito.MockedStatic<cr.una.reservas_municipales.util.CloudinaryUtil> mockedCloudinary = 
+                org.mockito.Mockito.mockStatic(cr.una.reservas_municipales.util.CloudinaryUtil.class)) {
+            
+            mockedCloudinary.when(() -> 
+                cr.una.reservas_municipales.util.CloudinaryUtil.uploadImageAndGetUrl(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString()))
+                .thenThrow(new java.io.IOException("Upload failed"));
+
+            SpaceDto result = spaceService.addImagesToSpace(spaceId, imageFiles);
+
+            // Assert - Debe retornar exitosamente aunque falle el upload
+            assertNotNull(result);
+            verify(spaceRepository).findById(spaceId);
+        }
+    }
+
+    @Test
+    void testDeleteSpaceImage_CloudinaryDeleteFails() {
+        // Arrange - Test cuando falla la eliminación en Cloudinary
+        UUID spaceId = UUID.randomUUID();
+        Long imageId = 1L;
+
+        cr.una.reservas_municipales.model.SpaceImage image = new cr.una.reservas_municipales.model.SpaceImage();
+        image.setImageId(imageId);
+        image.setSpaceId(spaceId);
+        image.setUrl("http://cloudinary.com/test.jpg");
+
+        when(spaceImageRepository.findById(imageId)).thenReturn(Optional.of(image));
+        when(cloudinaryService.deleteImageByUrl(anyString())).thenReturn(false); // Simular fallo
+        doNothing().when(spaceImageRepository).delete(image);
+
+        // Act
+        boolean result = spaceService.deleteSpaceImage(spaceId, imageId);
+
+        // Assert - Debe eliminar de DB aunque falle Cloudinary
+        assertTrue(result);
+        verify(spaceImageRepository).delete(image);
+        verify(cloudinaryService).deleteImageByUrl("http://cloudinary.com/test.jpg");
+    }
+
+    @Test
+    void testSearchSpaces_WithNullLocation() {
+        // Arrange - Espacio con location null pero buscar por location
+        Space spaceWithNullLocation = new Space();
+        spaceWithNullLocation.setSpaceId(UUID.randomUUID());
+        spaceWithNullLocation.setName("Space No Location");
+        spaceWithNullLocation.setCapacity(50);
+        spaceWithNullLocation.setLocation(null); // Location es null
+        spaceWithNullLocation.setActive(true);
+        spaceWithNullLocation.setSpaceTypeId((short) 1);
+
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(spaceWithNullLocation, testSpace));
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(any())).thenReturn(new ArrayList<>());
+
+        // Act - Buscar por location cuando un espacio tiene location null
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, "Sector", null, true);
+
+        // Assert - Solo debe retornar espacios que tengan location válida
+        assertEquals(1, result.size());
+        assertFalse(result.stream().anyMatch(dto -> dto.getName().equals("Space No Location")));
+    }
+
+    @Test
+    void testSearchSpaces_NameNotInDescriptionWhenDescriptionIsNull() {
+        // Arrange - Espacio con description null
+        Space spaceNoDesc = new Space();
+        spaceNoDesc.setSpaceId(UUID.randomUUID());
+        spaceNoDesc.setName("Basketball Court");
+        spaceNoDesc.setCapacity(30);
+        spaceNoDesc.setLocation("Section D");
+        spaceNoDesc.setDescription(null); // Description es null
+        spaceNoDesc.setActive(true);
+        spaceNoDesc.setSpaceTypeId((short) 2);
+
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(spaceNoDesc, testSpace));
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(any())).thenReturn(new ArrayList<>());
+
+        // Act - Buscar por nombre que NO está en el nombre del espacio
+        List<SpaceDto> result = spaceService.searchSpaces("fútbol", null, null, null, null, null, true);
+
+        // Assert - No debe encontrar el espacio porque description es null y nombre no coincide
+        assertTrue(result.isEmpty() || result.stream().noneMatch(dto -> dto.getName().equals("Basketball Court")));
+    }
+
+    @Test
+    void testSearchSpaces_EmptyStringFilters() {
+        // Arrange
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(any())).thenReturn(new ArrayList<>());
+
+        // Act - Buscar con strings vacíos (deben ignorarse)
+        List<SpaceDto> result = spaceService.searchSpaces("", null, null, null, "", null, true);
+
+        // Assert - Debe retornar todos los espacios activos (filtros vacíos se ignoran)
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_WhitespaceOnlyFilters() {
+        // Arrange
+        when(spaceRepository.findAll()).thenReturn(Arrays.asList(testSpace));
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(any())).thenReturn(new ArrayList<>());
+
+        // Act - Buscar con strings de solo espacios (deben ignorarse)
+        List<SpaceDto> result = spaceService.searchSpaces("   ", null, null, null, "   ", null, true);
+
+        // Assert - Debe retornar todos los espacios activos
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testCreateSpaceWithImages_EmptyImageList() {
+        // Arrange
+        SpaceDto spaceDto = new SpaceDto();
+        spaceDto.setName("Space No Images");
+        spaceDto.setCapacity(25);
+        spaceDto.setLocation("West");
+        spaceDto.setDescription("Test");
+
+        List<org.springframework.web.multipart.MultipartFile> emptyImageList = new ArrayList<>();
+
+        lenient().when(spaceRepository.save(any(Space.class))).thenAnswer(invocation -> {
+            Space s = invocation.getArgument(0);
+            s.setSpaceId(UUID.randomUUID());
+            return s;
+        });
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(any())).thenReturn(new ArrayList<>());
+
+        // Act - Crear espacio con lista de imágenes vacía
+        SpaceDto result = spaceService.createSpaceWithImages(spaceDto, emptyImageList);
+
+        // Assert
+        assertNotNull(result);
+        verify(spaceRepository).save(any(Space.class));
+        verify(spaceImageRepository, never()).saveAll(any()); // No debe intentar guardar imágenes
+    }
+
+    @Test
+    void testAddImagesToSpace_EmptyImageList() {
+        // Arrange
+        UUID spaceId = UUID.randomUUID();
+        testSpace.setSpaceId(spaceId);
+
+        List<org.springframework.web.multipart.MultipartFile> emptyImageList = new ArrayList<>();
+
+        when(spaceRepository.findById(spaceId)).thenReturn(Optional.of(testSpace));
+        lenient().when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(spaceId)).thenReturn(new ArrayList<>());
+
+        // Act - Agregar lista de imágenes vacía
+        SpaceDto result = spaceService.addImagesToSpace(spaceId, emptyImageList);
+
+        // Assert
+        assertNotNull(result);
+        verify(spaceImageRepository, never()).saveAll(any()); // No debe intentar guardar imágenes
+    }
+
+    // ========== NUEVOS TESTS PARA 100% COBERTURA ========== //
+
+    @Test
+    void testSearchSpaces_LocationWithNullSpaceLocation() {
+        Space spaceWithNullLocation = new Space();
+        spaceWithNullLocation.setSpaceId(UUID.randomUUID());
+        spaceWithNullLocation.setName("Espacio sin ubicación");
+        spaceWithNullLocation.setLocation(null);
+        spaceWithNullLocation.setActive(true);
+        spaceWithNullLocation.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(spaceWithNullLocation));
+        
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, "alguna ubicación", null, true);
+        
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testSearchSpaces_NameWithNullDescription() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha A");
+        space.setDescription(null);
+        space.setActive(true);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> result = spaceService.searchSpaces("texto no en nombre", null, null, null, null, null, true);
+        
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testSearchSpaces_SpaceTypeIdNoMatch() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha");
+        space.setSpaceTypeId((short) 5);
+        space.setActive(true);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> result = spaceService.searchSpaces(null, 99, null, null, null, null, true);
+        
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testSearchSpaces_MinCapacityEdgeCases() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha");
+        space.setCapacity(30);
+        space.setActive(true);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> belowMin = spaceService.searchSpaces(null, null, 50, null, null, null, true);
+        List<SpaceDto> aboveMin = spaceService.searchSpaces(null, null, 20, null, null, null, true);
+        
+        assertTrue(belowMin.isEmpty());
+        assertEquals(1, aboveMin.size());
+    }
+
+    @Test
+    void testSearchSpaces_MaxCapacityEdgeCases() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha");
+        space.setCapacity(80);
+        space.setActive(true);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> aboveMax = spaceService.searchSpaces(null, null, null, 50, null, null, true);
+        List<SpaceDto> belowMax = spaceService.searchSpaces(null, null, null, 100, null, null, true);
+        
+        assertTrue(aboveMax.isEmpty());
+        assertEquals(1, belowMax.size());
+    }
+
+    @Test
+    void testSearchSpaces_LocationCaseInsensitive() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha");
+        space.setLocation("Sector Norte");
+        space.setActive(true);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, "NORTE", null, true);
+        
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_NameInDescriptionOnly() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Espacio A");
+        space.setDescription("Este es un gimnasio moderno");
+        space.setActive(true);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> result = spaceService.searchSpaces("gimnasio", null, null, null, null, null, true);
+        
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_CombinationAllMatch() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha Fútbol Sector Norte");
+        space.setCapacity(50);
+        space.setLocation("Sector Norte");
+        space.setOutdoor(true);
+        space.setActive(true);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> result = spaceService.searchSpaces("Fútbol", 1, 40, 60, "Norte", true, true);
+        
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_CombinationPartialMatch() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha Fútbol");
+        space.setCapacity(50);
+        space.setLocation("Sector Norte");
+        space.setOutdoor(true);
+        space.setActive(true);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> result = spaceService.searchSpaces("Fútbol", 1, 40, 60, "Sur", true, true);
+        
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testSearchSpaces_InactiveActiveOnlyTrue() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha Inactiva");
+        space.setActive(false);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, null, null, true);
+        
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testSearchSpaces_InactiveActiveOnlyFalse() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha Inactiva");
+        space.setActive(false);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, null, null, false);
+        
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_OutdoorNullAllReturned() {
+        Space outdoor = new Space();
+        outdoor.setSpaceId(UUID.randomUUID());
+        outdoor.setName("Cancha Exterior");
+        outdoor.setOutdoor(true);
+        outdoor.setActive(true);
+        outdoor.setSpaceTypeId((short) 1);
+        
+        Space indoor = new Space();
+        indoor.setSpaceId(UUID.randomUUID());
+        indoor.setName("Gimnasio Interior");
+        indoor.setOutdoor(false);
+        indoor.setActive(true);
+        indoor.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(outdoor, indoor));
+        
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, null, null, true);
+        
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_AllNullReturnsActive() {
+        Space space1 = new Space();
+        space1.setSpaceId(UUID.randomUUID());
+        space1.setName("Espacio 1");
+        space1.setActive(true);
+        space1.setSpaceTypeId((short) 1);
+        
+        Space space2 = new Space();
+        space2.setSpaceId(UUID.randomUUID());
+        space2.setName("Espacio 2");
+        space2.setActive(true);
+        space2.setSpaceTypeId((short) 2);
+        
+        Space space3 = new Space();
+        space3.setSpaceId(UUID.randomUUID());
+        space3.setName("Espacio 3");
+        space3.setActive(false);
+        space3.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space1, space2, space3));
+        
+        List<SpaceDto> result = spaceService.searchSpaces(null, null, null, null, null, null, true);
+        
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void testSearchSpaces_WhitespaceOnlyNameFilter() {
+        Space space = new Space();
+        space.setSpaceId(UUID.randomUUID());
+        space.setName("Cancha");
+        space.setActive(true);
+        space.setSpaceTypeId((short) 1);
+        
+        lenient().when(spaceRepository.findAll()).thenReturn(List.of(space));
+        
+        List<SpaceDto> result = spaceService.searchSpaces("     ", null, null, null, null, null, true);
+        
+        assertEquals(1, result.size());
+    }
+
+    // ========== TESTS PARA ERROR HANDLERS (CATCH BLOCKS) ==========
+
+    @Test
+    void testCreateSpaceWithImages_CloudinaryUploadThrowsException() throws Exception {
+        // Arrange - Simular excepción en uploadImageAndGetUrl dentro del loop (líneas 117-118)
+        SpaceDto spaceDto = new SpaceDto();
+        spaceDto.setName("Cancha Test");
+        spaceDto.setCapacity(50);
+        spaceDto.setLocation("Test Location");
+        
+        org.springframework.web.multipart.MultipartFile mockFile = mock(org.springframework.web.multipart.MultipartFile.class);
+        lenient().when(mockFile.isEmpty()).thenReturn(false);
+        
+        when(spaceRepository.save(any(Space.class))).thenReturn(testSpace);
+        
+        // Simular excepción en Cloudinary cuando intenta subir cada imagen
+        when(cloudinaryService.uploadImageAndGetUrl(any(), anyString()))
+            .thenThrow(new RuntimeException("Cloudinary service unavailable"));
+        
+        // Act
+        SpaceDto result = spaceService.createSpaceWithImages(spaceDto, List.of(mockFile));
+        
+        // Assert - El espacio debe crearse aunque falle la subida de imágenes
+        assertNotNull(result);
+        verify(spaceRepository).save(any(Space.class));
+        verify(cloudinaryService).uploadImageAndGetUrl(any(), anyString());
+        // Verificar que NO se guardaron imágenes en la base de datos (debido al error)
+        verify(spaceImageRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void testAddImagesToSpace_CloudinaryUploadThrowsException() throws Exception {
+        // Arrange - Simular excepción en uploadImageAndGetUrl (líneas 166-167)
+        UUID spaceId = UUID.randomUUID();
+        
+        Space space = new Space();
+        space.setSpaceId(spaceId);
+        space.setName("Test Space");
+        space.setActive(true);
+        space.setSpaceTypeId((short) 1);
+        
+        org.springframework.web.multipart.MultipartFile mockFile1 = mock(org.springframework.web.multipart.MultipartFile.class);
+        org.springframework.web.multipart.MultipartFile mockFile2 = mock(org.springframework.web.multipart.MultipartFile.class);
+        
+        lenient().when(mockFile1.isEmpty()).thenReturn(false);
+        lenient().when(mockFile2.isEmpty()).thenReturn(false);
+        
+        when(spaceRepository.findById(spaceId)).thenReturn(Optional.of(space));
+        when(spaceImageRepository.findBySpaceIdOrderByOrdAsc(spaceId)).thenReturn(new ArrayList<>());
+        
+        // Primera imagen OK, segunda imagen lanza excepción
+        when(cloudinaryService.uploadImageAndGetUrl(eq(mockFile1), anyString()))
+            .thenReturn("http://cloudinary.com/image1.jpg");
+        when(cloudinaryService.uploadImageAndGetUrl(eq(mockFile2), anyString()))
+            .thenThrow(new RuntimeException("Network timeout"));
+        
+        // Act
+        SpaceDto result = spaceService.addImagesToSpace(spaceId, List.of(mockFile1, mockFile2));
+        
+        // Assert - Debe procesar la primera imagen y continuar a pesar del error en la segunda
+        assertNotNull(result);
+        verify(cloudinaryService, times(2)).uploadImageAndGetUrl(any(), anyString());
+        // Solo debe guardar 1 imagen (la que no falló)
+        ArgumentCaptor<List<cr.una.reservas_municipales.model.SpaceImage>> captor = 
+            ArgumentCaptor.forClass(List.class);
+        verify(spaceImageRepository).saveAll(captor.capture());
+        assertEquals(1, captor.getValue().size());
+    }
+
+    @Test
+    void testDeleteSpaceImage_CloudinaryDeleteThrowsException() {
+        // Arrange - Simular excepción en deleteImageByUrl (líneas 206-207)
+        UUID spaceId = UUID.randomUUID();
+        Long imageId = 100L;
+        
+        cr.una.reservas_municipales.model.SpaceImage image = new cr.una.reservas_municipales.model.SpaceImage();
+        image.setImageId(imageId);
+        image.setSpaceId(spaceId);
+        image.setUrl("http://cloudinary.com/test-image.jpg");
+        
+        when(spaceImageRepository.findById(imageId)).thenReturn(Optional.of(image));
+        
+        // Simular excepción en Cloudinary
+        when(cloudinaryService.deleteImageByUrl(anyString()))
+            .thenThrow(new RuntimeException("Cloudinary API error"));
+        
+        doNothing().when(spaceImageRepository).delete(image);
+        
+        // Act
+        boolean result = spaceService.deleteSpaceImage(spaceId, imageId);
+        
+        // Assert - Debe eliminar de DB aunque falle Cloudinary (catch block debe registrar error)
+        assertTrue(result);
+        verify(cloudinaryService).deleteImageByUrl("http://cloudinary.com/test-image.jpg");
+        verify(spaceImageRepository).delete(image);
     }
 }

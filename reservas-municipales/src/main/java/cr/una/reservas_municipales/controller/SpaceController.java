@@ -133,7 +133,7 @@ public class SpaceController {
     }
 
     /**
-     * POST /api/spaces - Crear nuevo espacio
+     * POST /api/spaces - Crear nuevo espacio SIN imágenes (JSON)
      * Solo ADMIN y SUPERVISOR pueden crear espacios
      */
     @PostMapping
@@ -157,6 +157,122 @@ public class SpaceController {
             log.error("Error creating space", e);
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to create space");
+            error.put("message", e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    /**
+     * POST /api/spaces/with-images - Crear espacio CON imágenes (multipart/form-data)
+     * Solo ADMIN y SUPERVISOR pueden crear espacios
+     */
+    @PostMapping("/with-images")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
+    public ResponseEntity<Object> createSpaceWithImages(
+            @RequestParam("name") String name,
+            @RequestParam("capacity") Integer capacity,
+            @RequestParam(value = "location", required = false) String location,
+            @RequestParam(value = "outdoor", defaultValue = "false") boolean outdoor,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "images", required = false) List<org.springframework.web.multipart.MultipartFile> images) {
+        
+        log.info("Creating space with images: {}, images count: {}", name, images != null ? images.size() : 0);
+        
+        try {
+            // Validar que el nombre sea único
+            if (spaceService.existsByName(name)) {
+                log.warn("Space name already exists: {}", name);
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Space name already exists");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
+            // Crear DTO del espacio
+            SpaceDto spaceDto = new SpaceDto();
+            spaceDto.setName(name);
+            spaceDto.setCapacity(capacity);
+            spaceDto.setLocation(location);
+            spaceDto.setOutdoor(outdoor);
+            spaceDto.setDescription(description);
+            
+            // Crear espacio con imágenes
+            SpaceDto createdSpace = spaceService.createSpaceWithImages(spaceDto, images);
+            log.info("Space with images created successfully: {}", createdSpace.getSpaceId());
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdSpace);
+            
+        } catch (Exception e) {
+            log.error("Error creating space with images", e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to create space with images");
+            error.put("message", e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    /**
+     * POST /api/spaces/{id}/images - Agregar imágenes a un espacio existente
+     * Solo ADMIN y SUPERVISOR pueden agregar imágenes
+     */
+    @PostMapping("/{id}/images")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
+    public ResponseEntity<Object> addImagesToSpace(
+            @PathVariable UUID id,
+            @RequestParam("images") List<org.springframework.web.multipart.MultipartFile> images) {
+        
+        log.info("Adding {} images to space {}", images.size(), id);
+        
+        try {
+            SpaceDto updatedSpace = spaceService.addImagesToSpace(id, images);
+            log.info("Images added successfully to space {}", id);
+            
+            return ResponseEntity.ok(updatedSpace);
+            
+        } catch (RuntimeException e) {
+            log.error("Error adding images to space {}: {}", id, e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Space not found");
+            error.put("message", e.getMessage());
+            return ResponseEntity.notFound().build();
+            
+        } catch (Exception e) {
+            log.error("Error adding images to space {}", id, e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to add images");
+            error.put("message", e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    /**
+     * DELETE /api/spaces/{spaceId}/images/{imageId} - Eliminar una imagen específica
+     * Solo ADMIN y SUPERVISOR pueden eliminar imágenes
+     */
+    @DeleteMapping("/{spaceId}/images/{imageId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
+    public ResponseEntity<Object> deleteSpaceImage(
+            @PathVariable UUID spaceId,
+            @PathVariable Long imageId) {
+        
+        log.info("Deleting image {} from space {}", imageId, spaceId);
+        
+        try {
+            boolean deleted = spaceService.deleteSpaceImage(spaceId, imageId);
+            
+            if (deleted) {
+                log.info("Image {} deleted from space {}", imageId, spaceId);
+                Map<String, String> success = new HashMap<>();
+                success.put("message", "Image deleted successfully");
+                return ResponseEntity.ok(success);
+            } else {
+                log.warn("Image {} not found in space {}", imageId, spaceId);
+                return ResponseEntity.notFound().build();
+            }
+            
+        } catch (Exception e) {
+            log.error("Error deleting image {} from space {}", imageId, spaceId, e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to delete image");
             error.put("message", e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
