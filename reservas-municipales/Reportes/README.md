@@ -1,120 +1,227 @@
 # API REST - Reservas Municipales
 
+Este documento describe los endpoints y contratos de la API, con énfasis en autenticación vía Azure AD y formatos de request/response. Se omiten hosts locales para facilitar su uso en distintos entornos.
+
 ## Autenticación
 
-### Iniciar el Programa
-.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
+### Flujo de autenticación (Azure AD)
+- El inicio de sesión se realiza mediante Azure Active Directory (OAuth 2.0 / OpenID Connect).
+- El cliente obtiene un token de Azure (id_token o access_token) y lo intercambia por un JWT propio del sistema para consumir los endpoints.
+- Ya no se admite el login por correo y contraseña en la documentación de la API.
 
-### Login
-```
-POST http://localhost:8080/api/auth/login
-Content-Type: application/json
-
-{
-    "email": "admin@test.com",
-    "password": "testpass"
-}
-
-{
-    "email": "supervisor@test.com",
-    "password": "testpass"
-}
-
-{
-    "email": "user@test.com",
-    "password": "testpass"
-}
-```
-
-**Response:**
+### Intercambio de token (Azure → JWT del sistema)
+- Método: POST
+- Endpoint: `/api/auth/login`
+- Headers: `Content-Type: application/json`
+- Request (contrato):
 ```json
 {
-    "token": "eyJhbGciOiJIUzI1NiJ9...",
-    "type": "Bearer",
-    "username": "admin@test.com",
-    "roles": ["ROLE_ADMIN"]
+  "azureToken": "<AZURE_ID_TOKEN_O_ACCESS_TOKEN>"
 }
 ```
 
-**Header requerido para todas las consultas:**
-```
-Authorization: Bearer [token]
+- Response (200 OK):
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "type": "Bearer",
+  "username": "user@tenant.com",
+  "roles": ["ROLE_USER"]
+}
 ```
 
+### Autorización en endpoints protegidos
+- Header requerido:
+```
+Authorization: Bearer <token>
+```
+- El `<token>` es el JWT emitido por este backend tras el intercambio con Azure.
+
+### Convenciones
+- Base path: `/api`
+- Formato de fechas: ISO-8601 con zona horaria, p. ej. `2025-10-25T14:00:00-06:00`
+- Códigos de estado: 2xx éxito, 4xx errores de cliente/validación, 5xx errores del servidor
+
 ---
+
+## Cómo usar la API (flujo típico)
+
+1) Autentícate con Azure AD en el cliente (MSAL u otro) y obtén un `azureToken` (id_token o access_token).
+2) Intercámbialo por un JWT del sistema con `POST /api/auth/login`.
+3) Usa `Authorization: Bearer <token>` en todas las llamadas protegidas.
+4) Descubre espacios: `GET /api/spaces` o filtros en `GET /api/spaces/search`.
+5) Crea una reserva: `POST /api/reservations` (valida horarios RF15).
+6) Confirma/ajusta la reserva: `PUT /api/reservations/{id}`.
+7) Usa QR: obtener (`GET /api/reservations/{id}/qr`), validar (`POST /api/reservations/{id}/validate-qr`).
+8) Exporta a Excel: `GET /api/reservations/export/excel` (o por `userId`).
+
+### Formato estándar de error
+```json
+{
+  "error": "<CODIGO_O_TIPO>",
+  "message": "<descripcion>",
+  "timestamp": "2025-10-28T10:30:00-06:00",
+  "path": "/api/endpoint",
+  "status": 400
+}
+```
+
+Notas:
+- Los mensajes se devuelven en español.
+- Algunos endpoints incluyen más campos (por ejemplo, validaciones específicas).
+
+## Modelos de datos (resumen)
+
+Estos son los campos principales que aparecen en las respuestas y solicitudes. Pueden existir campos adicionales según el contexto.
+
+- Space
+  - `id` (uuid)
+  - `name` (string)
+  - `spaceTypeId` (int)
+  - `capacity` (int)
+  - `location` (string)
+  - `outdoor` (boolean)
+  - `description` (string)
+  - `active` (boolean)
+
+- Reservation
+  - `id` (uuid)
+  - `spaceId` (uuid)
+  - `userId` (uuid)
+  - `startsAt` (datetime ISO-8601)
+  - `endsAt` (datetime ISO-8601)
+  - `status` (enum: PENDING, CONFIRMED, CANCELLED, COMPLETED)
+  - `totalAmount` (number)
+  - `currency` (string)
+  - `createdAt` (datetime)
+  - `cancellationReason` (string, opcional)
+
+- Review
+  - `reviewId` (number)
+  - `spaceId` (uuid)
+  - `userId` (uuid)
+  - `reservationId` (uuid)
+  - `rating` (int 1-5)
+  - `comment` (string)
+  - `visible` (boolean)
+  - `createdAt` (datetime)
+
+- User
+  - `userId` (uuid)
+  - `email` (string)
+  - `fullName` (string)
+  - `phone` (string)
+  - `active` (boolean)
+  - `roleCode` (string: ROLE_ADMIN | ROLE_SUPERVISOR | ROLE_USER)
+
+## Permisos por rol (resumen)
+
+- ROLE_ADMIN
+  - Gestión completa de usuarios y roles (incluye `PATCH /api/users/change-role`)
+  - Administración de espacios y horarios
+  - Gestión total de reservas (crear, actualizar, cancelar sin restricción de tiempo, eliminar)
+  - Acceso a dashboard y métricas
+  - Exportación de datos de cualquier usuario
+
+- ROLE_SUPERVISOR
+  - Visualización y gestión de reservas
+  - Gestión de horarios de espacios
+  - Acceso a dashboard y métricas
+  - Exportación de datos de usuarios
+  - Validación de códigos QR
+
+- ROLE_USER
+  - Crear y gestionar sus propias reservas
+  - Consultar espacios disponibles
+  - Crear reseñas de espacios utilizados (post-uso)
+  - Exportar sus propias reservas
+  - Ver y usar códigos QR de sus reservas
+
+## Reglas de negocio clave (resumen)
+
+- Reservas y horarios (RF15): si un espacio tiene horarios, las reservas deben caer completamente dentro de algún bloque; si no hay horarios, se permite cualquier horario.
+- Cancelación: por defecto, usuarios `ROLE_USER` deben cancelar con ≥24h; `ROLE_ADMIN` puede cancelar sin restricción. No se puede cancelar una reserva ya cancelada.
+- Auto-cancelación: reservas `PENDING` con hora de inicio pasada se cancelan automáticamente cada ~5 minutos.
+- Reseñas: solo para reservas `CONFIRMED` o `COMPLETED`, posterior al fin del periodo, y una reseña por reserva.
+
+## Buenas prácticas del cliente
+
+- Incluye siempre `Authorization: Bearer <token>` en endpoints protegidos y `Content-Type: application/json` en solicitudes con cuerpo.
+- Usa fechas en ISO-8601 con zona horaria explícita. Recomendada UTC o zona local consistente en todo el flujo.
+- Maneja correctamente `401 Unauthorized` (token inválido/ausente) y `403 Forbidden` (falta de permisos) mostrando mensajes orientativos al usuario.
+- Ante validaciones de negocio (400/409), muestra el `message` devuelto por la API para guiar la corrección.
+- Si el token expira, repite el intercambio con Azure (`POST /api/auth/login`) para obtener un JWT vigente.
 
 ## SpaceController
 
 ### Obtener todos los espacios
 ```
-GET http://localhost:8080/api/spaces
+GET /api/spaces
 ```
 
 ### Obtener espacio por ID
 ```
-GET http://localhost:8080/api/spaces/{id}
+GET /api/spaces/{id}
 ```
 
 ### Crear espacio
 ```
-POST http://localhost:8080/api/spaces
+POST /api/spaces
 Content-Type: application/json
 
 {
-    "name": "Parque Central",
-    "spaceTypeId": 1,
-    "capacity": 100,
-    "location": "Centro de la ciudad",
-    "outdoor": true,
-    "description": "Parque con juegos infantiles"
+  "name": "Parque Central",
+  "spaceTypeId": 1,
+  "capacity": 100,
+  "location": "Centro de la ciudad",
+  "outdoor": true,
+  "description": "Parque con juegos infantiles"
 }
 ```
 
 ### Actualizar espacio
 ```
-PUT http://localhost:8080/api/spaces/{id}
+PUT /api/spaces/{id}
 Content-Type: application/json
 
 {
-    "name": "Parque Central Actualizado",
-    "capacity": 150,
-    "description": "Descripción actualizada"
+  "name": "Parque Central Actualizado",
+  "capacity": 150,
+  "description": "Descripción actualizada"
 }
 ```
 
 ### Desactivar espacio (Soft Delete - RECOMENDADO)
-**Solo ADMIN - Marca el espacio como inactivo sin eliminarlo de la base de datos**
+Solo ADMIN - Marca el espacio como inactivo sin eliminarlo de la base de datos
 ```
-DELETE http://localhost:8080/api/spaces/{id}
+DELETE /api/spaces/{id}
 ```
 
-**Response exitoso (200 OK):**
+Response exitoso (200 OK):
 ```json
 {
   "message": "Space deactivated successfully"
 }
 ```
 
-**Características:**
-- ✅ NO elimina de la base de datos
-- ✅ Solo cambia `active = false`
-- ✅ Reversible: puede reactivarse
-- ✅ Mantiene datos históricos y reservas
+Características:
+- NO elimina de la base de datos (cambia `active = false`)
+- Reversible, mantiene historia y reservas
 
 ### Eliminar espacio permanentemente (Hard Delete - PELIGROSO)
-**Solo ADMIN - Elimina físicamente el espacio de la base de datos**
+Solo ADMIN - Elimina físicamente el espacio de la base de datos
 ```
-DELETE http://localhost:8080/api/spaces/{id}/permanent
+DELETE /api/spaces/{id}/permanent
 ```
 
-**Response exitoso (200 OK):**
+Response exitoso (200 OK):
 ```json
 {
   "message": "Space permanently deleted"
 }
 ```
 
-**Response bloqueado por reservas (409 CONFLICT):**
+Response bloqueado por reservas (409 CONFLICT):
 ```json
 {
   "error": "Cannot delete space",
@@ -122,30 +229,24 @@ DELETE http://localhost:8080/api/spaces/{id}/permanent
 }
 ```
 
-**⚠️ CARACTERÍSTICAS:**
-- ❌ BORRA PERMANENTEMENTE de la base de datos (DELETE físico)
-- ❌ NO reversible: los datos se pierden para siempre
-- ✅ Validación integrada: NO permite borrar si tiene reservas asociadas
-- ⚠️ Solo usar para limpiar espacios creados por error o pruebas
-
-**Cuándo usar cada uno:**
-- 🟢 **Soft Delete** (`/spaces/{id}`): Uso normal, cuando un espacio cierra temporalmente
-- 🔴 **Hard Delete** (`/spaces/{id}/permanent`): Solo para eliminar datos de prueba sin reservas
+Cuándo usar cada uno:
+- Soft Delete: cierre temporal o desactivación lógica
+- Hard Delete: limpieza de datos de prueba sin reservas asociadas
 
 ### Búsqueda avanzada de espacios
 ```
-GET http://localhost:8080/api/spaces/search?name=parque
-GET http://localhost:8080/api/spaces/search?minCapacity=50&maxCapacity=200
-GET http://localhost:8080/api/spaces/search?outdoor=true
-GET http://localhost:8080/api/spaces/search?location=centro
-GET http://localhost:8080/api/spaces/search?spaceTypeId=1
-GET http://localhost:8080/api/spaces/search?name=parque&outdoor=true&minCapacity=100
+GET /api/spaces/search?name=parque
+GET /api/spaces/search?minCapacity=50&maxCapacity=200
+GET /api/spaces/search?outdoor=true
+GET /api/spaces/search?location=centro
+GET /api/spaces/search?spaceTypeId=1
+GET /api/spaces/search?name=parque&outdoor=true&minCapacity=100
 ```
 
 ### Buscar espacios disponibles por fechas
 ```
-GET http://localhost:8080/api/spaces/available?startDate=2025-10-20T08:00:00-06:00&endDate=2025-10-20T18:00:00-06:00
-GET http://localhost:8080/api/spaces/available?startDate=2025-10-20T14:00:00-06:00&endDate=2025-10-20T16:00:00-06:00&minCapacity=50&spaceTypeId=1
+GET /api/spaces/available?startDate=2025-10-20T08:00:00-06:00&endDate=2025-10-20T18:00:00-06:00
+GET /api/spaces/available?startDate=2025-10-20T14:00:00-06:00&endDate=2025-10-20T16:00:00-06:00&minCapacity=50&spaceTypeId=1
 ```
 
 ---
@@ -153,212 +254,165 @@ GET http://localhost:8080/api/spaces/available?startDate=2025-10-20T14:00:00-06:
 ## ReservationController
 
 ### Obtener todas las reservas
-**Roles permitidos: ADMIN, SUPERVISOR, USER**
+Roles: ADMIN, SUPERVISOR, USER
 ```
-GET http://localhost:8080/api/reservations
+GET /api/reservations
 ```
 
 ### Obtener reserva por ID
-**Roles permitidos: ADMIN, SUPERVISOR, USER**
+Roles: ADMIN, SUPERVISOR, USER
 ```
-GET http://localhost:8080/api/reservations/{id}
+GET /api/reservations/{id}
 ```
 
 ### Obtener reservas por usuario
-**Roles permitidos: ADMIN, SUPERVISOR, USER**
+Roles: ADMIN, SUPERVISOR, USER
 ```
-GET http://localhost:8080/api/reservations/user/{userId}
+GET /api/reservations/user/{userId}
 ```
 
 ### Obtener reservas por espacio
-**Roles permitidos: ADMIN, SUPERVISOR, USER**
+Roles: ADMIN, SUPERVISOR, USER
 ```
-GET http://localhost:8080/api/reservations/space/{spaceId}
+GET /api/reservations/space/{spaceId}
 ```
 
 ### Obtener reservas por estado
-**Roles permitidos: ADMIN**
+Roles: ADMIN
 ```
-GET http://localhost:8080/api/reservations/status/{status}
+GET /api/reservations/status/{status}
 ```
 
 ### Obtener reservas en rango de fechas
-**Roles permitidos: ADMIN, SUPERVISOR, USER**
+Roles: ADMIN, SUPERVISOR, USER
 ```
-GET http://localhost:8080/api/reservations/date-range?startDate=2025-10-20T00:00:00-06:00&endDate=2025-10-30T23:59:59-06:00
+GET /api/reservations/date-range?startDate=2025-10-20T00:00:00-06:00&endDate=2025-10-30T23:59:59-06:00
 ```
 
 ### Crear reserva
-**Roles permitidos: ADMIN, SUPERVISOR, USER**
+Roles: ADMIN, SUPERVISOR, USER
 ```
-POST http://localhost:8080/api/reservations
+POST /api/reservations
 Content-Type: application/json
 
 {
-    "spaceId": "[id_espacio]",
-    "userId": "[id_usuario]",
-    "startsAt": "2025-10-25T14:00:00-06:00",
-    "endsAt": "2025-10-25T16:00:00-06:00",
-    "status": "PENDING",
-    "totalAmount": 15000.00,
-    "currency": "CRC"
+  "spaceId": "[id_espacio]",
+  "userId": "[id_usuario]",
+  "startsAt": "2025-10-25T14:00:00-06:00",
+  "endsAt": "2025-10-25T16:00:00-06:00",
+  "status": "PENDING",
+  "totalAmount": 15000.00,
+  "currency": "CRC"
 }
 ```
 
 ### Actualizar reserva
-**Roles permitidos: ADMIN, SUPERVISOR, USER**
+Roles: ADMIN, SUPERVISOR, USER
 ```
-PUT http://localhost:8080/api/reservations/{id}
+PUT /api/reservations/{id}
 Content-Type: application/json
 
 {
-    "startsAt": "2025-10-25T15:00:00-06:00",
-    "endsAt": "2025-10-25T17:00:00-06:00",
-    "status": "CONFIRMED",
-    "totalAmount": 20000.00
+  "startsAt": "2025-10-25T15:00:00-06:00",
+  "endsAt": "2025-10-25T17:00:00-06:00",
+  "status": "CONFIRMED",
+  "totalAmount": 20000.00
 }
 ```
 
 ### Cancelar reserva
-**Roles permitidos: ADMIN, SUPERVISOR, USER**
-**⚠️ RESTRICCIONES:**
-- Debe hacerse con al menos **24 horas** de anticipación (configurable en `application-docker.yml`).
-- Usuarios con rol **USER** solo pueden cancelar con 24+ horas de anticipación.
-- Usuarios con rol **ADMIN** pueden cancelar en cualquier momento.
-- **No se puede cancelar una reserva que ya está cancelada.**
+Roles: ADMIN, SUPERVISOR, USER
+Restricciones:
+- Con al menos 24 horas de anticipación (configurable en `application-docker.yml`).
+- USER: 24+ horas; ADMIN: sin restricción; no cancelar si ya está `CANCELLED`.
 
 ```
-PATCH http://localhost:8080/api/reservations/{id}/cancel?reason=Usuario no puede asistir
+PATCH /api/reservations/{id}/cancel?reason=Usuario no puede asistir
 ```
 
-**Respuesta exitosa (200 OK):**
+Respuesta exitosa (200 OK):
 ```json
-(Sin contenido - vacío)
+(Sin contenido)
 ```
 
-**Respuesta de cancelación tardía (403 FORBIDDEN):**
+Respuesta tardía (403 FORBIDDEN):
 ```json
 {
-    "error": "Cancelación no permitida",
-    "message": "La cancelación debe realizarse con al menos 24 horas de anticipación. Actualmente faltan 18 horas para la reserva. Solo un ADMIN puede cancelar con menos anticipación.",
-    "timestamp": "2025-10-23T10:30:00-06:00"
+  "error": "Cancelación no permitida",
+  "message": "La cancelación debe realizarse con al menos 24 horas de anticipación. Actualmente faltan 18 horas para la reserva. Solo un ADMIN puede cancelar con menos anticipación.",
+  "timestamp": "2025-10-23T10:30:00-06:00"
 }
 ```
 
-**Respuesta si ya está cancelada (403 FORBIDDEN):**
+Ya cancelada (403 FORBIDDEN):
 ```json
 {
-    "error": "Cancelación no permitida",
-    "message": "Esta reserva ya ha sido cancelada previamente.",
-    "timestamp": "2025-10-23T10:30:00-06:00"
+  "error": "Cancelación no permitida",
+  "message": "Esta reserva ya ha sido cancelada previamente.",
+  "timestamp": "2025-10-23T10:30:00-06:00"
 }
 ```
 
 ### Eliminar reserva
 ```
-DELETE http://localhost:8080/api/reservations/{id}
+DELETE /api/reservations/{id}
 ```
 
 ### ⏰ Auto-cancelación de Reservas Pendientes
-**El sistema cancela automáticamente las reservas pendientes que no se confirman a tiempo.**
+- Tarea programada cada 5 minutos
+- Cancela automáticamente reservas `PENDING` cuyo `startsAt` ya pasó
+- Ajusta estado a `CANCELLED` y registra motivo
 
-**Comportamiento automático:**
-- ✅ Se ejecuta cada **5 minutos** en segundo plano
-- ✅ Busca reservas con estado `PENDING` cuya hora de inicio ya pasó
-- ✅ Cambia automáticamente el estado a `CANCELLED`
-- ✅ Agrega un motivo de cancelación descriptivo con la fecha/hora
-- ✅ Logs detallados para auditoría
-
-**Ejemplo de motivo de cancelación automática:**
+Ejemplo de motivo:
 ```
 "Cancelada automáticamente - No se confirmó antes de la hora de inicio (25/10/2025 14:00)"
 ```
 
-**Estados del flujo de vida de una reserva:**
-1. **PENDING** → Recién creada, esperando confirmación
-2. **CONFIRMED** → Confirmada por el usuario/admin
-3. **CANCELLED** → Cancelada manualmente o automáticamente
-4. **COMPLETED** → Reserva utilizada y finalizada
-
-**Regla importante:**
-- Si una reserva está en `PENDING` y pasa su hora de inicio sin confirmarse → Se cancela automáticamente
-- Las reservas `CONFIRMED` NO se cancelan automáticamente
+Estados: PENDING → CONFIRMED → CANCELLED → COMPLETED
 
 ### 📊 Exportar reservas a Excel (Usuario autenticado)
-**El usuario exporta sus propias reservas**
 ```
-GET http://localhost:8080/api/reservations/export/excel
-Authorization: Bearer [token]
+GET /api/reservations/export/excel
+Authorization: Bearer <token>
 ```
 
-**Response:**
+Response:
 - Content-Type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 - Content-Disposition: `attachment; filename="reservas_[usuario]_[fecha].xlsx"`
-- Archivo Excel con dos hojas:
-  - **Hoja 1 "Reservaciones"**: Tabla con todas las reservas del usuario
-  - **Hoja 2 "Resumen"**: Estadísticas y totales
+- Hojas: "Reservaciones" (detalle) y "Resumen" (estadísticas)
 
 ### 📊 Exportar reservas a Excel (Admin/Supervisor)
-**Admin o Supervisor puede exportar reservas de cualquier usuario**
 ```
-GET http://localhost:8080/api/reservations/export/excel/{userId}
-Authorization: Bearer [token]
-```
-
-**Ejemplo:**
-```
-GET http://localhost:8080/api/reservations/export/excel/550e8400-e29b-41d4-a716-446655440002
-Authorization: Bearer [admin_token]
+GET /api/reservations/export/excel/{userId}
+Authorization: Bearer <token>
 ```
 
-**Response:**
-- Mismo formato que el endpoint anterior
-- Solo usuarios con rol `ADMIN` o `SUPERVISOR` pueden acceder
-- Permite consultar las reservas de cualquier usuario del sistema
+Columnas: ID, Espacio, Inicio, Fin, Estado, Monto, Moneda, Creación, Observaciones
 
-**Columnas del Excel:**
-- ID Reserva
-- Espacio
-- Fecha Inicio
-- Fecha Fin
-- Estado de la Reserva
-- Monto Total
-- Moneda
-- Fecha Creación
-- Observaciones
-
-**Estadísticas incluidas:**
-- Total de reservas
-- Reservas confirmadas
-- Reservas canceladas
-- Reservas pendientes
-- Reservas completadas
-- Total de dinero pagado
-
-### 📱 Obtener código QR (JSON con Base64)
+### 📱 Obtener código QR (JSON Base64)
 ```
-GET http://localhost:8080/api/reservations/{id}/qr
+GET /api/reservations/{id}/qr
 ```
 
-### 🖼️ Obtener código QR como imagen PNG
+### 🖼️ Obtener QR como imagen PNG
 ```
-GET http://localhost:8080/api/reservations/{id}/qr/image
+GET /api/reservations/{id}/qr/image
 ```
 
 ### ✅ Validar QR y marcar asistencia
 ```
-POST http://localhost:8080/api/reservations/{id}/validate-qr
+POST /api/reservations/{id}/validate-qr
 Content-Type: application/json
 
 {
-    "qrContent": "RESERVA:99d7391f-3a53-459d-a41a-f5996cea0082:550e8400-e29b-41d4-a716-446655440000:21056e13-415e-486c-9fd6-94d5f6af08e8:1729377298000",
-    "validationToken": "cualquier-token"
+  "qrContent": "RESERVA:...",
+  "validationToken": "cualquier-token"
 }
 ```
 
-### 🔄 Regenerar código QR (Solo ADMIN/SUPERVISOR)
+### 🔄 Regenerar código QR (ADMIN/SUPERVISOR)
 ```
-POST http://localhost:8080/api/reservations/{id}/regenerate-qr
+POST /api/reservations/{id}/regenerate-qr
 ```
 
 ---
@@ -367,125 +421,58 @@ POST http://localhost:8080/api/reservations/{id}/regenerate-qr
 
 ### Obtener todas las reseñas
 ```
-GET http://localhost:8080/api/reviews
+GET /api/reviews
 ```
 
 ### Obtener reseña por ID
 ```
-GET http://localhost:8080/api/reviews/[id]
+GET /api/reviews/{id}
 ```
 
 ### Obtener reseñas por espacio
 ```
-GET http://localhost:8080/api/reviews/space/[id]
+GET /api/reviews/space/{id}
 ```
 
 ### Obtener reseñas por usuario
 ```
-GET http://localhost:8080/api/reviews/user/[id]
+GET /api/reviews/user/{id}
 ```
 
 ### Obtener estadísticas de un espacio
 ```
-GET http://localhost:8080/api/reviews/space/[id]/statistics
+GET /api/reviews/space/{id}/statistics
 ```
 
-**Response:**
+Response:
 ```json
 {
-    "spaceId": "[id]",
-    "averageRating": 4.5,
-    "totalReviews": 10,
-    "ratingDistribution": {
-        "1": 0,
-        "2": 1,
-        "3": 2,
-        "4": 3,
-        "5": 4
-    }
+  "spaceId": "[id]",
+  "averageRating": 4.5,
+  "totalReviews": 10,
+  "ratingDistribution": {"1":0, "2":1, "3":2, "4":3, "5":4}
 }
 ```
 
 ### Crear reseña
-**⚠️ RESTRICCIONES POST-USO:**
-- Solo se pueden crear reseñas de reservas con estado **CONFIRMED** o **COMPLETED**
-- La reseña solo puede crearse **después** de que pase la fecha de fin de la reserva
-- Solo el usuario que realizó la reserva puede reseñar ese espacio
-- No se puede crear más de una reseña por reserva
+Restricciones:
+- Solo reservas `CONFIRMED` o `COMPLETED`
+- Después de la fecha de fin de la reserva
+- Solo el usuario dueño de la reserva
+- Una reseña por reserva
 
 ```
-POST http://localhost:8080/api/reviews
+POST /api/reviews
 Content-Type: application/json
 
 {
-    "spaceId": "[id]",
-    "userId": "[id]",
-    "reservationId": "[id]",
-    "rating": 5,
-    "comment": "Excelente espacio, muy limpio y bien equipado",
-    "visible": true
+  "spaceId": "[id]",
+  "userId": "[id]",
+  "reservationId": "[id]",
+  "rating": 5,
+  "comment": "Excelente espacio, muy limpio y bien equipado",
+  "visible": true
 }
-```
-
-**Respuesta exitosa (200 OK):**
-```json
-{
-    "reviewId": 1,
-    "spaceId": "uuid-espacio",
-    "userId": "uuid-usuario",
-    "reservationId": "uuid-reserva",
-    "rating": 5,
-    "comment": "Excelente espacio, muy limpio y bien equipado",
-    "visible": true,
-    "createdAt": "2025-11-01T14:30:00-06:00"
-}
-```
-
-**Errores comunes:**
-
-**Estado de reserva inválido (400 Bad Request):**
-```json
-{
-    "error": "Solo se pueden reseñar espacios de reservas confirmadas o completadas. Estado actual: PENDING"
-}
-```
-
-**Reseña antes de usar el espacio (400 Bad Request):**
-```json
-{
-    "error": "Solo se puede reseñar un espacio después de haber usado la reserva. La reserva finaliza el: 25/10/2025 16:00"
-}
-```
-
-**Usuario no autorizado (400 Bad Request):**
-```json
-{
-    "error": "Solo el usuario que realizó la reserva puede hacer una reseña de este espacio"
-}
-```
-
-**Reseña duplicada (400 Bad Request):**
-```json
-{
-    "error": "Ya existe una reseña para esta reserva"
-}
-```
-
-### Actualizar reseña
-```
-PUT http://localhost:8080/api/reviews/[id]
-Content-Type: application/json
-
-{
-    "rating": 4,
-    "comment": "Muy buen espacio, pero podría mejorar la iluminación",
-    "visible": true
-}
-```
-
-### Eliminar reseña (Solo ADMIN)
-```
-DELETE http://localhost:8080/api/reviews/[id]
 ```
 
 ---
@@ -494,128 +481,43 @@ DELETE http://localhost:8080/api/reviews/[id]
 
 ### Obtener todos los usuarios
 ```
-GET http://localhost:8080/api/users
-Authorization: Bearer [token]
+GET /api/users
+Authorization: Bearer <token>
 ```
 
 ### Obtener usuario por ID
 ```
-GET http://localhost:8080/api/users/{id}
-Authorization: Bearer [token]
+GET /api/users/{id}
+Authorization: Bearer <token>
 ```
 
 ### Cambiar rol de usuario (Solo ADMIN)
-**Solo usuarios con rol ADMIN pueden cambiar roles de otros usuarios**
-**El sistema envía automáticamente un correo al usuario notificando el cambio**
-
+El sistema envía un correo al usuario notificando el cambio.
 ```
-PATCH http://localhost:8080/api/users/change-role
-Authorization: Bearer [admin_token]
+PATCH /api/users/change-role
+Authorization: Bearer <admin_token>
 Content-Type: application/json
 
 {
-    "userId": "550e8400-e29b-41d4-a716-446655440000",
-    "roleCode": "ROLE_ADMIN"
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "roleCode": "ROLE_ADMIN"
 }
 ```
 
-**Roles válidos:**
-- `ROLE_ADMIN` - Administrador con permisos completos
-- `ROLE_SUPERVISOR` - Supervisor con permisos de gestión
-- `ROLE_USER` - Usuario regular con permisos básicos
-
-**Response exitoso (200 OK):**
-```json
-{
-    "message": "Rol actualizado exitosamente",
-    "user": {
-        "userId": "550e8400-e29b-41d4-a716-446655440000",
-        "email": "user@test.com",
-        "fullName": "Usuario Test",
-        "phone": "88888888",
-        "active": true,
-        "roleCode": "ROLE_ADMIN"
-    }
-}
-```
-
-**Errores comunes:**
-
-**Usuario no encontrado (400 Bad Request):**
-```json
-{
-    "error": "Error al cambiar rol",
-    "message": "Usuario no encontrado con ID: 550e8400-e29b-41d4-a716-446655440000"
-}
-```
-
-**Rol no encontrado (400 Bad Request):**
-```json
-{
-    "error": "Error al cambiar rol",
-    "message": "Rol no encontrado: ROLE_INVALID"
-}
-```
-
-**Usuario ya tiene ese rol (400 Bad Request):**
-```json
-{
-    "error": "Error al cambiar rol",
-    "message": "El usuario ya tiene el rol: ROLE_ADMIN"
-}
-```
-
-**Sin permisos (403 Forbidden):**
-```json
-{
-    "error": "Access Denied",
-    "message": "You don't have permission to access this resource"
-}
-```
-
-**📧 Notificación por correo:**
-- ✅ Se envía automáticamente un email al usuario cuando su rol cambia
-- ✅ El email incluye el rol anterior y el nuevo rol
-- ✅ Se detallan los permisos del nuevo rol
-- ✅ Email con diseño HTML profesional y responsive
-- ✅ Si falla el envío del email, el cambio de rol se completa de todas formas
-
-**Permisos por rol:**
-
-**ROLE_ADMIN:**
-- Gestión completa de usuarios y roles
-- Administración de espacios y horarios
-- Gestión total de reservas
-- Acceso a dashboard y métricas
-- Cancelación sin restricciones de tiempo
-- Exportación de datos de cualquier usuario
-
-**ROLE_SUPERVISOR:**
-- Visualización y gestión de reservas
-- Gestión de horarios de espacios
-- Acceso a dashboard y métricas
-- Exportación de datos de usuarios
-- Validación de códigos QR
-
-**ROLE_USER:**
-- Crear y gestionar sus propias reservas
-- Consultar espacios disponibles
-- Crear reseñas de espacios utilizados
-- Exportar sus propias reservas
-- Ver y usar códigos QR de sus reservas
+Roles válidos: `ROLE_ADMIN`, `ROLE_SUPERVISOR`, `ROLE_USER`
 
 ---
 
-## Estados válidos para reservas
+## Estados válidos de reservas
 - PENDING
 - CONFIRMED
 - CANCELLED
 - COMPLETED
 
-## Rangos válidos para calificaciones
+## Rangos válidos de calificaciones
 - Rating: 1-5 (1 = Muy malo, 5 = Excelente)
 
-## Tipos de espacio disponibles
+## Tipos de espacio
 - 1: Parque
 - 2: Salón Comunal
 - 3: Campo Deportivo
@@ -624,65 +526,13 @@ Content-Type: application/json
 
 ## DashboardController - Métricas del Sistema
 
-### Obtener métricas del dashboard (Solo ADMIN/SUPERVISOR)
+### Obtener métricas del dashboard (ADMIN/SUPERVISOR)
 ```
-GET http://localhost:8080/api/admin/dashboard
-Authorization: Bearer [token]
-```
-
-**Response incluye 5 categorías de métricas:**
-
-```json
-{
-  "generalMetrics": {
-    "totalReservations": 245,
-    "totalSpaces": 12,
-    "totalUsers": 89,
-    "activeReservations": 34
-  },
-  "reservationsByStatus": {
-    "CONFIRMED": 28,
-    "PENDING": 6,
-    "CANCELLED": 15,
-    "COMPLETED": 196
-  },
-  "revenueMetrics": {
-    "currentMonthRevenue": 12500.0,
-    "lastMonthRevenue": 10800.0,
-    "percentageChange": 15.74
-  },
-  "topSpaces": [
-    {
-      "spaceId": "uuid",
-      "spaceName": "Salón Comunal Norte",
-      "reservationCount": 45,
-      "totalRevenue": 4500.0
-    }
-  ],
-  "temporalMetrics": {
-    "reservationsToday": 5,
-    "reservationsThisWeek": 34,
-    "reservationsThisMonth": 128,
-    "reservationsByDayOfWeek": {
-      "MONDAY": 18,
-      "FRIDAY": 30
-    },
-    "reservationsByHour": {
-      "8": 5,
-      "14": 18,
-      "16": 22
-    },
-    "mostPopularDay": "FRIDAY",
-    "mostPopularHour": 16
-  }
-}
+GET /api/admin/dashboard
+Authorization: Bearer <token>
 ```
 
-**Características:**
-- ✅ Cache de 10 minutos para optimización
-- ✅ Análisis de ingresos con tendencias mes a mes
-- ✅ Identificación de días y horas pico
-- ✅ Top 5 espacios más rentables
+Response incluye 5 categorías de métricas (general, por estado, ingresos, top espacios, temporal), con cache de ~10 minutos.
 
 ---
 
@@ -690,11 +540,11 @@ Authorization: Bearer [token]
 
 ### Obtener horarios de un espacio
 ```
-GET http://localhost:8080/api/spaces/{spaceId}/schedules
-Authorization: Bearer [token]
+GET /api/spaces/{spaceId}/schedules
+Authorization: Bearer <token>
 ```
 
-**Response:**
+Response:
 ```json
 [
   {
@@ -708,10 +558,10 @@ Authorization: Bearer [token]
 ]
 ```
 
-### Crear horario (Solo ADMIN/SUPERVISOR)
+### Crear horario (ADMIN/SUPERVISOR)
 ```
-POST http://localhost:8080/api/spaces/{spaceId}/schedules
-Authorization: Bearer [token]
+POST /api/spaces/{spaceId}/schedules
+Authorization: Bearer <token>
 Content-Type: application/json
 
 {
@@ -721,210 +571,55 @@ Content-Type: application/json
 }
 ```
 
-**⏰ HORARIO POR DEFECTO:**
-- Si NO se especifica `timeFrom`: se usa **06:00 AM** por defecto
-- Si NO se especifica `timeTo`: se usa **08:00 PM** (20:00) por defecto
-- Esto facilita la creación rápida de horarios estándar
+Horario por defecto:
+- Si falta `timeFrom`: 06:00
+- Si falta `timeTo`: 20:00
 
-**Días de la semana:** 0=Domingo, 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes, 6=Sábado
+Días de la semana: 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
 
-### Eliminar horario específico (Solo ADMIN/SUPERVISOR)
+### Eliminar horario específico (ADMIN/SUPERVISOR)
 ```
-DELETE http://localhost:8080/api/spaces/{spaceId}/schedules/{scheduleId}
-Authorization: Bearer [token]
-```
-
-### Eliminar todos los horarios (Solo ADMIN)
-```
-DELETE http://localhost:8080/api/spaces/{spaceId}/schedules
-Authorization: Bearer [token]
+DELETE /api/spaces/{spaceId}/schedules/{scheduleId}
+Authorization: Bearer <token>
 ```
 
-**Validación automática en reservas:**
-- ✅ Si el espacio tiene horarios configurados, las reservas solo pueden **crearse y actualizarse** dentro de esos horarios
-- ✅ Si el espacio NO tiene horarios, permite cualquier horario (backward compatible)
-- ✅ La reserva debe estar completamente dentro de un bloque horario
-- ✅ Mensajes de error descriptivos en español
+### Eliminar todos los horarios (ADMIN)
+```
+DELETE /api/spaces/{spaceId}/schedules
+Authorization: Bearer <token>
+```
+
+Validación en reservas:
+- Si hay horarios, las reservas deben estar dentro de los bloques definidos
+- Si no hay horarios, se permite cualquier horario (compatibilidad hacia atrás)
 
 ---
 
-## WeatherController - Información del Clima para Espacios al Aire Libre
+## WeatherController - Información del Clima
 
-### Obtener clima para un espacio específico
-**Consulta el clima para espacios al aire libre. Solo funciona con espacios que tengan `outdoor: true`.**
-
+### Clima para espacio (solo `outdoor: true`)
 ```
-GET http://localhost:8080/api/weather/space/{spaceId}
-Authorization: Bearer [token]
+GET /api/weather/space/{spaceId}
+Authorization: Bearer <token>
 ```
 
-**Ejemplo:**
+### Clima por ubicación/ciudad
 ```
-GET http://localhost:8080/api/weather/space/21056e13-415e-486c-9fd6-94d5f6af08e8
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
-```
-
-**Response exitoso (200 OK):**
-```json
-{
-  "location": "Parque Central",
-  "temperature": 28.5,
-  "feels_like": 32.1,
-  "description": "cielo claro",
-  "humidity": 74,
-  "wind_speed": 2.57,
-  "cloudiness": 20,
-  "rain_probability": 15.0,
-  "is_outdoor_friendly": true,
-  "recommendation": "Condiciones ideales para actividades al aire libre. ¡Disfruta tu reserva!",
-  "data_source": "API",
-  "fetched_at": "2025-10-28T10:30:00-06:00",
-  "latitude": 9.9333,
-  "longitude": -84.0833
-}
+GET /api/weather/location?location={ciudad}
+Authorization: Bearer <token>
 ```
 
-**Criterios para "condiciones aptas" (`is_outdoor_friendly: true`):**
-- ✅ Temperatura entre 15°C y 30°C
-- ✅ Probabilidad de lluvia < 30%
-- ✅ Velocidad del viento < 10 m/s
+Formato `location`:
+- "Ciudad,PaísISO" (p. ej., "San Jose,CR", "London,GB")
+- "Ciudad" (si es única)
 
-**Errores comunes:**
-
-**404 Not Found** (Espacio no existe):
-```json
-{
-  "error": "Espacio no encontrado",
-  "message": "Espacio no encontrado con ID: 21056e13-415e-486c-9fd6-94d5f6af08e8",
-  "timestamp": "2025-10-28T10:30:00-06:00"
-}
+### Health check (ADMIN)
+```
+GET /api/weather/health
+Authorization: Bearer <admin_token>
 ```
 
-**400 Bad Request** (Espacio interior):
-```json
-{
-  "error": "Espacio interior",
-  "message": "El espacio 'Salón de Eventos' es interior y no requiere información del clima",
-  "timestamp": "2025-10-28T10:30:00-06:00"
-}
-```
-
-**503 Service Unavailable** (API del clima caída):
-```json
-{
-  "location": "Parque Central",
-  "temperature": 0.0,
-  "description": "Información del clima no disponible",
-  "is_outdoor_friendly": false,
-  "recommendation": "No se pudo obtener información del clima. Por favor, intente más tarde.",
-  "data_source": "FALLBACK",
-  "fetched_at": "2025-10-28T10:30:00-06:00"
-}
-```
-
-### Obtener clima por ubicación/ciudad
-**Consulta el clima para cualquier ciudad del mundo.**
-
-```
-GET http://localhost:8080/api/weather/location?location={ciudad}
-Authorization: Bearer [token]
-```
-
-**Ejemplos:**
-```
-GET http://localhost:8080/api/weather/location?location=San Jose,CR
-GET http://localhost:8080/api/weather/location?location=Cartago,CR
-GET http://localhost:8080/api/weather/location?location=Madrid,ES
-```
-
-**Response (200 OK):**
-```json
-{
-  "location": "San Jose,CR",
-  "temperature": 27.3,
-  "feels_like": 30.8,
-  "description": "nubes dispersas",
-  "humidity": 68,
-  "wind_speed": 3.2,
-  "cloudiness": 40,
-  "rain_probability": 20.0,
-  "is_outdoor_friendly": true,
-  "recommendation": "Condiciones ideales para actividades al aire libre. ¡Disfruta tu reserva!",
-  "data_source": "API",
-  "fetched_at": "2025-10-28T10:35:00-06:00",
-  "latitude": 9.9281,
-  "longitude": -84.0907
-}
-```
-
-**Formato del parámetro `location`:**
-- `"Ciudad,PaísISO"` (ej: `"San Jose,CR"`, `"London,GB"`)
-- `"Ciudad"` (ej: `"Madrid"` - si es única)
-- Códigos ISO de país: CR (Costa Rica), US (Estados Unidos), ES (España), etc.
-
-**Error si la ubicación no existe (400 Bad Request):**
-```json
-{
-  "error": "WEATHER_API_ERROR",
-  "message": "No se pudieron obtener coordenadas para: CiudadInvalida",
-  "timestamp": "2025-10-28T10:40:00-06:00"
-}
-```
-
-### Health check del servicio (Solo ADMIN)
-**Verifica el estado de la conexión con la API del clima.**
-
-```
-GET http://localhost:8080/api/weather/health
-Authorization: Bearer [admin_token]
-```
-
-**Response (200 OK):**
-```json
-{
-  "status": "UP",
-  "service": "Weather API Integration",
-  "healthy": true,
-  "timestamp": "2025-10-28T10:45:00-06:00"
-}
-```
-
-**Response si la API falla (200 OK - con estado DOWN):**
-```json
-{
-  "status": "DOWN",
-  "service": "Weather API Integration",
-  "healthy": false,
-  "timestamp": "2025-10-28T10:45:00-06:00"
-}
-```
-
----
-
-## Características del Sistema de Clima
-
-### Cache automático
-- **Duración**: 5 minutos (300 segundos)
-- **Beneficio**: Reduce llamadas a la API externa y mejora tiempos de respuesta
-- **Tamaño máximo**: 500 entradas en memoria
-
-### Tolerancia a fallos (Resilience4j)
-- **Retry**: Reintenta hasta 3 veces con backoff exponencial (500ms, 1s, 2s)
-- **Circuit Breaker**: Si 50% de las requests fallan, abre el circuito por 30s
-- **Fallback**: Si falla todo, retorna datos genéricos (temp 0°C, "no disponible")
-- **Timeout**: Cancela requests que tarden más de 2 segundos
-
-### Fuentes de datos (`data_source`)
-- **`API`**: Datos obtenidos de OpenWeatherMap en tiempo real
-- **`CACHE`**: Datos servidos desde cache (no visible en response, pero más rápido)
-- **`FALLBACK`**: Datos genéricos cuando la API falla
-
-### API externa utilizada
-- **Proveedor**: OpenWeatherMap One Call API 3.0
-- **URL base**: `https://api.openweathermap.org/data/3.0`
-- **Documentación**: https://openweathermap.org/api/one-call-3
-- **Límite gratuito**: 1,000 requests/día
-- **Unidades**: Métricas (Celsius, m/s, %)
-- **Idioma**: Español (descripciones en español)
-
----
+### Notas técnicas (clima)
+- Cache en memoria ~5 min (máx. ~500 entradas)
+- Resilience4j: retry (x3), circuit breaker (50% fail → 30s), timeout (~2s), fallback
+- Fuentes: `API` (OpenWeather), `CACHE`, `FALLBACK`
