@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>README.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="api-rest---reservas-municipales">API REST - Reservas Municipales</h1>
+<p>Este documento describe los endpoints y contratos de la API, con énfasis en autenticación vía Azure AD y formatos de request/response. Se omiten hosts locales para facilitar su uso en distintos entornos.</p>
+<h2 id="autenticaci%C3%B3n">Autenticación</h2>
+<h3 id="flujo-de-autenticaci%C3%B3n-azure-ad">Flujo de autenticación (Azure AD)</h3>
+<ul>
+<li>El inicio de sesión se realiza mediante Azure Active Directory (OAuth 2.0 / OpenID Connect).</li>
+<li>El cliente obtiene un token de Azure (id_token o access_token) y lo intercambia por un JWT propio del sistema para consumir los endpoints.</li>
+<li>Ya no se admite el login por correo y contraseña en la documentación de la API.</li>
+</ul>
+<h3 id="intercambio-de-token-azure-%E2%86%92-jwt-del-sistema">Intercambio de token (Azure → JWT del sistema)</h3>
+<ul>
+<li>Método: POST</li>
+<li>Endpoint: <code>/api/auth/login</code></li>
+<li>Headers: <code>Content-Type: application/json</code></li>
+<li>Request (contrato):</li>
+</ul>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"azureToken"</span>: <span class="hljs-string">"&lt;AZURE_ID_TOKEN_O_ACCESS_TOKEN&gt;"</span>
+}
+</div></code></pre>
+<ul>
+<li>Response (200 OK):</li>
+</ul>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"token"</span>: <span class="hljs-string">"eyJhbGciOiJIUzI1NiJ9..."</span>,
+  <span class="hljs-attr">"type"</span>: <span class="hljs-string">"Bearer"</span>,
+  <span class="hljs-attr">"username"</span>: <span class="hljs-string">"user@tenant.com"</span>,
+  <span class="hljs-attr">"roles"</span>: [<span class="hljs-string">"ROLE_USER"</span>]
+}
+</div></code></pre>
+<h3 id="autorizaci%C3%B3n-en-endpoints-protegidos">Autorización en endpoints protegidos</h3>
+<ul>
+<li>Header requerido:</li>
+</ul>
+<pre class="hljs"><code><div>Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<ul>
+<li>El <code>&lt;token&gt;</code> es el JWT emitido por este backend tras el intercambio con Azure.</li>
+</ul>
+<h3 id="convenciones">Convenciones</h3>
+<ul>
+<li>Base path: <code>/api</code></li>
+<li>Formato de fechas: ISO-8601 con zona horaria, p. ej. <code>2025-10-25T14:00:00-06:00</code></li>
+<li>Códigos de estado: 2xx éxito, 4xx errores de cliente/validación, 5xx errores del servidor</li>
+</ul>
+<hr>
+<h2 id="c%C3%B3mo-usar-la-api-flujo-t%C3%ADpico">Cómo usar la API (flujo típico)</h2>
+<ol>
+<li>Autentícate con Azure AD en el cliente (MSAL u otro) y obtén un <code>azureToken</code> (id_token o access_token).</li>
+<li>Intercámbialo por un JWT del sistema con <code>POST /api/auth/login</code>.</li>
+<li>Usa <code>Authorization: Bearer &lt;token&gt;</code> en todas las llamadas protegidas.</li>
+<li>Descubre espacios: <code>GET /api/spaces</code> o filtros en <code>GET /api/spaces/search</code>.</li>
+<li>Crea una reserva: <code>POST /api/reservations</code> (valida horarios RF15).</li>
+<li>Confirma/ajusta la reserva: <code>PUT /api/reservations/{id}</code>.</li>
+<li>Usa QR: obtener (<code>GET /api/reservations/{id}/qr</code>), validar (<code>POST /api/reservations/{id}/validate-qr</code>).</li>
+<li>Exporta a Excel: <code>GET /api/reservations/export/excel</code> (o por <code>userId</code>).</li>
+</ol>
+<h3 id="formato-est%C3%A1ndar-de-error">Formato estándar de error</h3>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"error"</span>: <span class="hljs-string">"&lt;CODIGO_O_TIPO&gt;"</span>,
+  <span class="hljs-attr">"message"</span>: <span class="hljs-string">"&lt;descripcion&gt;"</span>,
+  <span class="hljs-attr">"timestamp"</span>: <span class="hljs-string">"2025-10-28T10:30:00-06:00"</span>,
+  <span class="hljs-attr">"path"</span>: <span class="hljs-string">"/api/endpoint"</span>,
+  <span class="hljs-attr">"status"</span>: <span class="hljs-number">400</span>
+}
+</div></code></pre>
+<p>Notas:</p>
+<ul>
+<li>Los mensajes se devuelven en español.</li>
+<li>Algunos endpoints incluyen más campos (por ejemplo, validaciones específicas).</li>
+</ul>
+<h2 id="modelos-de-datos-resumen">Modelos de datos (resumen)</h2>
+<p>Estos son los campos principales que aparecen en las respuestas y solicitudes. Pueden existir campos adicionales según el contexto.</p>
+<ul>
+<li>
+<p>Space</p>
+<ul>
+<li><code>id</code> (uuid)</li>
+<li><code>name</code> (string)</li>
+<li><code>spaceTypeId</code> (int)</li>
+<li><code>capacity</code> (int)</li>
+<li><code>location</code> (string)</li>
+<li><code>outdoor</code> (boolean)</li>
+<li><code>description</code> (string)</li>
+<li><code>active</code> (boolean)</li>
+</ul>
+</li>
+<li>
+<p>Reservation</p>
+<ul>
+<li><code>id</code> (uuid)</li>
+<li><code>spaceId</code> (uuid)</li>
+<li><code>userId</code> (uuid)</li>
+<li><code>startsAt</code> (datetime ISO-8601)</li>
+<li><code>endsAt</code> (datetime ISO-8601)</li>
+<li><code>status</code> (enum: PENDING, CONFIRMED, CANCELLED, COMPLETED)</li>
+<li><code>totalAmount</code> (number)</li>
+<li><code>currency</code> (string)</li>
+<li><code>createdAt</code> (datetime)</li>
+<li><code>cancellationReason</code> (string, opcional)</li>
+</ul>
+</li>
+<li>
+<p>Review</p>
+<ul>
+<li><code>reviewId</code> (number)</li>
+<li><code>spaceId</code> (uuid)</li>
+<li><code>userId</code> (uuid)</li>
+<li><code>reservationId</code> (uuid)</li>
+<li><code>rating</code> (int 1-5)</li>
+<li><code>comment</code> (string)</li>
+<li><code>visible</code> (boolean)</li>
+<li><code>createdAt</code> (datetime)</li>
+</ul>
+</li>
+<li>
+<p>User</p>
+<ul>
+<li><code>userId</code> (uuid)</li>
+<li><code>email</code> (string)</li>
+<li><code>fullName</code> (string)</li>
+<li><code>phone</code> (string)</li>
+<li><code>active</code> (boolean)</li>
+<li><code>roleCode</code> (string: ROLE_ADMIN | ROLE_SUPERVISOR | ROLE_USER)</li>
+</ul>
+</li>
+</ul>
+<h2 id="permisos-por-rol-resumen">Permisos por rol (resumen)</h2>
+<ul>
+<li>
+<p>ROLE_ADMIN</p>
+<ul>
+<li>Gestión completa de usuarios y roles (incluye <code>PATCH /api/users/change-role</code>)</li>
+<li>Administración de espacios y horarios</li>
+<li>Gestión total de reservas (crear, actualizar, cancelar sin restricción de tiempo, eliminar)</li>
+<li>Acceso a dashboard y métricas</li>
+<li>Exportación de datos de cualquier usuario</li>
+</ul>
+</li>
+<li>
+<p>ROLE_SUPERVISOR</p>
+<ul>
+<li>Visualización y gestión de reservas</li>
+<li>Gestión de horarios de espacios</li>
+<li>Acceso a dashboard y métricas</li>
+<li>Exportación de datos de usuarios</li>
+<li>Validación de códigos QR</li>
+</ul>
+</li>
+<li>
+<p>ROLE_USER</p>
+<ul>
+<li>Crear y gestionar sus propias reservas</li>
+<li>Consultar espacios disponibles</li>
+<li>Crear reseñas de espacios utilizados (post-uso)</li>
+<li>Exportar sus propias reservas</li>
+<li>Ver y usar códigos QR de sus reservas</li>
+</ul>
+</li>
+</ul>
+<h2 id="reglas-de-negocio-clave-resumen">Reglas de negocio clave (resumen)</h2>
+<ul>
+<li>Reservas y horarios (RF15): si un espacio tiene horarios, las reservas deben caer completamente dentro de algún bloque; si no hay horarios, se permite cualquier horario.</li>
+<li>Cancelación: por defecto, usuarios <code>ROLE_USER</code> deben cancelar con ≥24h; <code>ROLE_ADMIN</code> puede cancelar sin restricción. No se puede cancelar una reserva ya cancelada.</li>
+<li>Auto-cancelación: reservas <code>PENDING</code> con hora de inicio pasada se cancelan automáticamente cada ~5 minutos.</li>
+<li>Reseñas: solo para reservas <code>CONFIRMED</code> o <code>COMPLETED</code>, posterior al fin del periodo, y una reseña por reserva.</li>
+</ul>
+<h2 id="buenas-pr%C3%A1cticas-del-cliente">Buenas prácticas del cliente</h2>
+<ul>
+<li>Incluye siempre <code>Authorization: Bearer &lt;token&gt;</code> en endpoints protegidos y <code>Content-Type: application/json</code> en solicitudes con cuerpo.</li>
+<li>Usa fechas en ISO-8601 con zona horaria explícita. Recomendada UTC o zona local consistente en todo el flujo.</li>
+<li>Maneja correctamente <code>401 Unauthorized</code> (token inválido/ausente) y <code>403 Forbidden</code> (falta de permisos) mostrando mensajes orientativos al usuario.</li>
+<li>Ante validaciones de negocio (400/409), muestra el <code>message</code> devuelto por la API para guiar la corrección.</li>
+<li>Si el token expira, repite el intercambio con Azure (<code>POST /api/auth/login</code>) para obtener un JWT vigente.</li>
+</ul>
+<h2 id="spacecontroller">SpaceController</h2>
+<h3 id="obtener-todos-los-espacios">Obtener todos los espacios</h3>
+<pre class="hljs"><code><div>GET /api/spaces
+</div></code></pre>
+<h3 id="obtener-espacio-por-id">Obtener espacio por ID</h3>
+<pre class="hljs"><code><div>GET /api/spaces/{id}
+</div></code></pre>
+<h3 id="crear-espacio">Crear espacio</h3>
+<pre class="hljs"><code><div>POST /api/spaces
+Content-Type: application/json
+
+{
+  &quot;name&quot;: &quot;Parque Central&quot;,
+  &quot;spaceTypeId&quot;: 1,
+  &quot;capacity&quot;: 100,
+  &quot;location&quot;: &quot;Centro de la ciudad&quot;,
+  &quot;outdoor&quot;: true,
+  &quot;description&quot;: &quot;Parque con juegos infantiles&quot;
+}
+</div></code></pre>
+<h3 id="actualizar-espacio">Actualizar espacio</h3>
+<pre class="hljs"><code><div>PUT /api/spaces/{id}
+Content-Type: application/json
+
+{
+  &quot;name&quot;: &quot;Parque Central Actualizado&quot;,
+  &quot;capacity&quot;: 150,
+  &quot;description&quot;: &quot;Descripción actualizada&quot;
+}
+</div></code></pre>
+<h3 id="desactivar-espacio-soft-delete---recomendado">Desactivar espacio (Soft Delete - RECOMENDADO)</h3>
+<p>Solo ADMIN - Marca el espacio como inactivo sin eliminarlo de la base de datos</p>
+<pre class="hljs"><code><div>DELETE /api/spaces/{id}
+</div></code></pre>
+<p>Response exitoso (200 OK):</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"message"</span>: <span class="hljs-string">"Space deactivated successfully"</span>
+}
+</div></code></pre>
+<p>Características:</p>
+<ul>
+<li>NO elimina de la base de datos (cambia <code>active = false</code>)</li>
+<li>Reversible, mantiene historia y reservas</li>
+</ul>
+<h3 id="eliminar-espacio-permanentemente-hard-delete---peligroso">Eliminar espacio permanentemente (Hard Delete - PELIGROSO)</h3>
+<p>Solo ADMIN - Elimina físicamente el espacio de la base de datos</p>
+<pre class="hljs"><code><div>DELETE /api/spaces/{id}/permanent
+</div></code></pre>
+<p>Response exitoso (200 OK):</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"message"</span>: <span class="hljs-string">"Space permanently deleted"</span>
+}
+</div></code></pre>
+<p>Response bloqueado por reservas (409 CONFLICT):</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"error"</span>: <span class="hljs-string">"Cannot delete space"</span>,
+  <span class="hljs-attr">"message"</span>: <span class="hljs-string">"Cannot delete space: it has 5 associated reservation(s). Please deactivate instead."</span>
+}
+</div></code></pre>
+<p>Cuándo usar cada uno:</p>
+<ul>
+<li>Soft Delete: cierre temporal o desactivación lógica</li>
+<li>Hard Delete: limpieza de datos de prueba sin reservas asociadas</li>
+</ul>
+<h3 id="b%C3%BAsqueda-avanzada-de-espacios">Búsqueda avanzada de espacios</h3>
+<pre class="hljs"><code><div>GET /api/spaces/search?name=parque
+GET /api/spaces/search?minCapacity=50&amp;maxCapacity=200
+GET /api/spaces/search?outdoor=true
+GET /api/spaces/search?location=centro
+GET /api/spaces/search?spaceTypeId=1
+GET /api/spaces/search?name=parque&amp;outdoor=true&amp;minCapacity=100
+</div></code></pre>
+<h3 id="buscar-espacios-disponibles-por-fechas">Buscar espacios disponibles por fechas</h3>
+<pre class="hljs"><code><div>GET /api/spaces/available?startDate=2025-10-20T08:00:00-06:00&amp;endDate=2025-10-20T18:00:00-06:00
+GET /api/spaces/available?startDate=2025-10-20T14:00:00-06:00&amp;endDate=2025-10-20T16:00:00-06:00&amp;minCapacity=50&amp;spaceTypeId=1
+</div></code></pre>
+<hr>
+<h2 id="reservationcontroller">ReservationController</h2>
+<h3 id="obtener-todas-las-reservas">Obtener todas las reservas</h3>
+<p>Roles: ADMIN, SUPERVISOR, USER</p>
+<pre class="hljs"><code><div>GET /api/reservations
+</div></code></pre>
+<h3 id="obtener-reserva-por-id">Obtener reserva por ID</h3>
+<p>Roles: ADMIN, SUPERVISOR, USER</p>
+<pre class="hljs"><code><div>GET /api/reservations/{id}
+</div></code></pre>
+<h3 id="obtener-reservas-por-usuario">Obtener reservas por usuario</h3>
+<p>Roles: ADMIN, SUPERVISOR, USER</p>
+<pre class="hljs"><code><div>GET /api/reservations/user/{userId}
+</div></code></pre>
+<h3 id="obtener-reservas-por-espacio">Obtener reservas por espacio</h3>
+<p>Roles: ADMIN, SUPERVISOR, USER</p>
+<pre class="hljs"><code><div>GET /api/reservations/space/{spaceId}
+</div></code></pre>
+<h3 id="obtener-reservas-por-estado">Obtener reservas por estado</h3>
+<p>Roles: ADMIN</p>
+<pre class="hljs"><code><div>GET /api/reservations/status/{status}
+</div></code></pre>
+<h3 id="obtener-reservas-en-rango-de-fechas">Obtener reservas en rango de fechas</h3>
+<p>Roles: ADMIN, SUPERVISOR, USER</p>
+<pre class="hljs"><code><div>GET /api/reservations/date-range?startDate=2025-10-20T00:00:00-06:00&amp;endDate=2025-10-30T23:59:59-06:00
+</div></code></pre>
+<h3 id="crear-reserva">Crear reserva</h3>
+<p>Roles: ADMIN, SUPERVISOR, USER</p>
+<pre class="hljs"><code><div>POST /api/reservations
+Content-Type: application/json
+
+{
+  &quot;spaceId&quot;: &quot;[id_espacio]&quot;,
+  &quot;userId&quot;: &quot;[id_usuario]&quot;,
+  &quot;startsAt&quot;: &quot;2025-10-25T14:00:00-06:00&quot;,
+  &quot;endsAt&quot;: &quot;2025-10-25T16:00:00-06:00&quot;,
+  &quot;status&quot;: &quot;PENDING&quot;,
+  &quot;totalAmount&quot;: 15000.00,
+  &quot;currency&quot;: &quot;CRC&quot;
+}
+</div></code></pre>
+<h3 id="actualizar-reserva">Actualizar reserva</h3>
+<p>Roles: ADMIN, SUPERVISOR, USER</p>
+<pre class="hljs"><code><div>PUT /api/reservations/{id}
+Content-Type: application/json
+
+{
+  &quot;startsAt&quot;: &quot;2025-10-25T15:00:00-06:00&quot;,
+  &quot;endsAt&quot;: &quot;2025-10-25T17:00:00-06:00&quot;,
+  &quot;status&quot;: &quot;CONFIRMED&quot;,
+  &quot;totalAmount&quot;: 20000.00
+}
+</div></code></pre>
+<h3 id="cancelar-reserva">Cancelar reserva</h3>
+<p>Roles: ADMIN, SUPERVISOR, USER
+Restricciones:</p>
+<ul>
+<li>Con al menos 24 horas de anticipación (configurable en <code>application-docker.yml</code>).</li>
+<li>USER: 24+ horas; ADMIN: sin restricción; no cancelar si ya está <code>CANCELLED</code>.</li>
+</ul>
+<pre class="hljs"><code><div>PATCH /api/reservations/{id}/cancel?reason=Usuario no puede asistir
+</div></code></pre>
+<p>Respuesta exitosa (200 OK):</p>
+<pre class="hljs"><code><div>(Sin contenido)
+</div></code></pre>
+<p>Respuesta tardía (403 FORBIDDEN):</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"error"</span>: <span class="hljs-string">"Cancelación no permitida"</span>,
+  <span class="hljs-attr">"message"</span>: <span class="hljs-string">"La cancelación debe realizarse con al menos 24 horas de anticipación. Actualmente faltan 18 horas para la reserva. Solo un ADMIN puede cancelar con menos anticipación."</span>,
+  <span class="hljs-attr">"timestamp"</span>: <span class="hljs-string">"2025-10-23T10:30:00-06:00"</span>
+}
+</div></code></pre>
+<p>Ya cancelada (403 FORBIDDEN):</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"error"</span>: <span class="hljs-string">"Cancelación no permitida"</span>,
+  <span class="hljs-attr">"message"</span>: <span class="hljs-string">"Esta reserva ya ha sido cancelada previamente."</span>,
+  <span class="hljs-attr">"timestamp"</span>: <span class="hljs-string">"2025-10-23T10:30:00-06:00"</span>
+}
+</div></code></pre>
+<h3 id="eliminar-reserva">Eliminar reserva</h3>
+<pre class="hljs"><code><div>DELETE /api/reservations/{id}
+</div></code></pre>
+<h3 id="%E2%8F%B0-auto-cancelaci%C3%B3n-de-reservas-pendientes">⏰ Auto-cancelación de Reservas Pendientes</h3>
+<ul>
+<li>Tarea programada cada 5 minutos</li>
+<li>Cancela automáticamente reservas <code>PENDING</code> cuyo <code>startsAt</code> ya pasó</li>
+<li>Ajusta estado a <code>CANCELLED</code> y registra motivo</li>
+</ul>
+<p>Ejemplo de motivo:</p>
+<pre class="hljs"><code><div>&quot;Cancelada automáticamente - No se confirmó antes de la hora de inicio (25/10/2025 14:00)&quot;
+</div></code></pre>
+<p>Estados: PENDING → CONFIRMED → CANCELLED → COMPLETED</p>
+<h3 id="%F0%9F%93%8A-exportar-reservas-a-excel-usuario-autenticado">📊 Exportar reservas a Excel (Usuario autenticado)</h3>
+<pre class="hljs"><code><div>GET /api/reservations/export/excel
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<p>Response:</p>
+<ul>
+<li>Content-Type: <code>application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</code></li>
+<li>Content-Disposition: <code>attachment; filename=&quot;reservas_[usuario]_[fecha].xlsx&quot;</code></li>
+<li>Hojas: &quot;Reservaciones&quot; (detalle) y &quot;Resumen&quot; (estadísticas)</li>
+</ul>
+<h3 id="%F0%9F%93%8A-exportar-reservas-a-excel-adminsupervisor">📊 Exportar reservas a Excel (Admin/Supervisor)</h3>
+<pre class="hljs"><code><div>GET /api/reservations/export/excel/{userId}
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<p>Columnas: ID, Espacio, Inicio, Fin, Estado, Monto, Moneda, Creación, Observaciones</p>
+<h3 id="%F0%9F%93%B1-obtener-c%C3%B3digo-qr-json-base64">📱 Obtener código QR (JSON Base64)</h3>
+<pre class="hljs"><code><div>GET /api/reservations/{id}/qr
+</div></code></pre>
+<h3 id="%F0%9F%96%BC%EF%B8%8F-obtener-qr-como-imagen-png">🖼️ Obtener QR como imagen PNG</h3>
+<pre class="hljs"><code><div>GET /api/reservations/{id}/qr/image
+</div></code></pre>
+<h3 id="%E2%9C%85-validar-qr-y-marcar-asistencia">✅ Validar QR y marcar asistencia</h3>
+<pre class="hljs"><code><div>POST /api/reservations/{id}/validate-qr
+Content-Type: application/json
+
+{
+  &quot;qrContent&quot;: &quot;RESERVA:...&quot;,
+  &quot;validationToken&quot;: &quot;cualquier-token&quot;
+}
+</div></code></pre>
+<h3 id="%F0%9F%94%84-regenerar-c%C3%B3digo-qr-adminsupervisor">🔄 Regenerar código QR (ADMIN/SUPERVISOR)</h3>
+<pre class="hljs"><code><div>POST /api/reservations/{id}/regenerate-qr
+</div></code></pre>
+<hr>
+<h2 id="reviewcontroller">ReviewController</h2>
+<h3 id="obtener-todas-las-rese%C3%B1as">Obtener todas las reseñas</h3>
+<pre class="hljs"><code><div>GET /api/reviews
+</div></code></pre>
+<h3 id="obtener-rese%C3%B1a-por-id">Obtener reseña por ID</h3>
+<pre class="hljs"><code><div>GET /api/reviews/{id}
+</div></code></pre>
+<h3 id="obtener-rese%C3%B1as-por-espacio">Obtener reseñas por espacio</h3>
+<pre class="hljs"><code><div>GET /api/reviews/space/{id}
+</div></code></pre>
+<h3 id="obtener-rese%C3%B1as-por-usuario">Obtener reseñas por usuario</h3>
+<pre class="hljs"><code><div>GET /api/reviews/user/{id}
+</div></code></pre>
+<h3 id="obtener-estad%C3%ADsticas-de-un-espacio">Obtener estadísticas de un espacio</h3>
+<pre class="hljs"><code><div>GET /api/reviews/space/{id}/statistics
+</div></code></pre>
+<p>Response:</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"spaceId"</span>: <span class="hljs-string">"[id]"</span>,
+  <span class="hljs-attr">"averageRating"</span>: <span class="hljs-number">4.5</span>,
+  <span class="hljs-attr">"totalReviews"</span>: <span class="hljs-number">10</span>,
+  <span class="hljs-attr">"ratingDistribution"</span>: {<span class="hljs-attr">"1"</span>:<span class="hljs-number">0</span>, <span class="hljs-attr">"2"</span>:<span class="hljs-number">1</span>, <span class="hljs-attr">"3"</span>:<span class="hljs-number">2</span>, <span class="hljs-attr">"4"</span>:<span class="hljs-number">3</span>, <span class="hljs-attr">"5"</span>:<span class="hljs-number">4</span>}
+}
+</div></code></pre>
+<h3 id="crear-rese%C3%B1a">Crear reseña</h3>
+<p>Restricciones:</p>
+<ul>
+<li>Solo reservas <code>CONFIRMED</code> o <code>COMPLETED</code></li>
+<li>Después de la fecha de fin de la reserva</li>
+<li>Solo el usuario dueño de la reserva</li>
+<li>Una reseña por reserva</li>
+</ul>
+<pre class="hljs"><code><div>POST /api/reviews
+Content-Type: application/json
+
+{
+  &quot;spaceId&quot;: &quot;[id]&quot;,
+  &quot;userId&quot;: &quot;[id]&quot;,
+  &quot;reservationId&quot;: &quot;[id]&quot;,
+  &quot;rating&quot;: 5,
+  &quot;comment&quot;: &quot;Excelente espacio, muy limpio y bien equipado&quot;,
+  &quot;visible&quot;: true
+}
+</div></code></pre>
+<hr>
+<h2 id="usercontroller---gesti%C3%B3n-de-usuarios">UserController - Gestión de Usuarios</h2>
+<h3 id="obtener-todos-los-usuarios">Obtener todos los usuarios</h3>
+<pre class="hljs"><code><div>GET /api/users
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<h3 id="obtener-usuario-por-id">Obtener usuario por ID</h3>
+<pre class="hljs"><code><div>GET /api/users/{id}
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<h3 id="cambiar-rol-de-usuario-solo-admin">Cambiar rol de usuario (Solo ADMIN)</h3>
+<p>El sistema envía un correo al usuario notificando el cambio.</p>
+<pre class="hljs"><code><div>PATCH /api/users/change-role
+Authorization: Bearer &lt;admin_token&gt;
+Content-Type: application/json
+
+{
+  &quot;userId&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,
+  &quot;roleCode&quot;: &quot;ROLE_ADMIN&quot;
+}
+</div></code></pre>
+<p>Roles válidos: <code>ROLE_ADMIN</code>, <code>ROLE_SUPERVISOR</code>, <code>ROLE_USER</code></p>
+<hr>
+<h2 id="estados-v%C3%A1lidos-de-reservas">Estados válidos de reservas</h2>
+<ul>
+<li>PENDING</li>
+<li>CONFIRMED</li>
+<li>CANCELLED</li>
+<li>COMPLETED</li>
+</ul>
+<h2 id="rangos-v%C3%A1lidos-de-calificaciones">Rangos válidos de calificaciones</h2>
+<ul>
+<li>Rating: 1-5 (1 = Muy malo, 5 = Excelente)</li>
+</ul>
+<h2 id="tipos-de-espacio">Tipos de espacio</h2>
+<ul>
+<li>1: Parque</li>
+<li>2: Salón Comunal</li>
+<li>3: Campo Deportivo</li>
+</ul>
+<hr>
+<h2 id="dashboardcontroller---m%C3%A9tricas-del-sistema">DashboardController - Métricas del Sistema</h2>
+<h3 id="obtener-m%C3%A9tricas-del-dashboard-adminsupervisor">Obtener métricas del dashboard (ADMIN/SUPERVISOR)</h3>
+<pre class="hljs"><code><div>GET /api/admin/dashboard
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<p>Response incluye 5 categorías de métricas (general, por estado, ingresos, top espacios, temporal), con cache de ~10 minutos.</p>
+<hr>
+<h2 id="spaceschedulecontroller---horarios-de-espacios-rf15">SpaceScheduleController - Horarios de Espacios (RF15)</h2>
+<h3 id="obtener-horarios-de-un-espacio">Obtener horarios de un espacio</h3>
+<pre class="hljs"><code><div>GET /api/spaces/{spaceId}/schedules
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<p>Response:</p>
+<pre class="hljs"><code><div>[
+  {
+    <span class="hljs-attr">"scheduleId"</span>: <span class="hljs-number">1</span>,
+    <span class="hljs-attr">"spaceId"</span>: <span class="hljs-string">"uuid-del-espacio"</span>,
+    <span class="hljs-attr">"weekday"</span>: <span class="hljs-number">1</span>,
+    <span class="hljs-attr">"weekdayName"</span>: <span class="hljs-string">"Monday"</span>,
+    <span class="hljs-attr">"timeFrom"</span>: <span class="hljs-string">"08:00:00"</span>,
+    <span class="hljs-attr">"timeTo"</span>: <span class="hljs-string">"12:00:00"</span>
+  }
+]
+</div></code></pre>
+<h3 id="crear-horario-adminsupervisor">Crear horario (ADMIN/SUPERVISOR)</h3>
+<pre class="hljs"><code><div>POST /api/spaces/{spaceId}/schedules
+Authorization: Bearer &lt;token&gt;
+Content-Type: application/json
+
+{
+  &quot;weekday&quot;: 1,
+  &quot;timeFrom&quot;: &quot;08:00:00&quot;,
+  &quot;timeTo&quot;: &quot;12:00:00&quot;
+}
+</div></code></pre>
+<p>Horario por defecto:</p>
+<ul>
+<li>Si falta <code>timeFrom</code>: 06:00</li>
+<li>Si falta <code>timeTo</code>: 20:00</li>
+</ul>
+<p>Días de la semana: 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb</p>
+<h3 id="eliminar-horario-espec%C3%ADfico-adminsupervisor">Eliminar horario específico (ADMIN/SUPERVISOR)</h3>
+<pre class="hljs"><code><div>DELETE /api/spaces/{spaceId}/schedules/{scheduleId}
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<h3 id="eliminar-todos-los-horarios-admin">Eliminar todos los horarios (ADMIN)</h3>
+<pre class="hljs"><code><div>DELETE /api/spaces/{spaceId}/schedules
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<p>Validación en reservas:</p>
+<ul>
+<li>Si hay horarios, las reservas deben estar dentro de los bloques definidos</li>
+<li>Si no hay horarios, se permite cualquier horario (compatibilidad hacia atrás)</li>
+</ul>
+<hr>
+<h2 id="weathercontroller---informaci%C3%B3n-del-clima">WeatherController - Información del Clima</h2>
+<h3 id="clima-para-espacio-solo-outdoor-true">Clima para espacio (solo <code>outdoor: true</code>)</h3>
+<pre class="hljs"><code><div>GET /api/weather/space/{spaceId}
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<h3 id="clima-por-ubicaci%C3%B3nciudad">Clima por ubicación/ciudad</h3>
+<pre class="hljs"><code><div>GET /api/weather/location?location={ciudad}
+Authorization: Bearer &lt;token&gt;
+</div></code></pre>
+<p>Formato <code>location</code>:</p>
+<ul>
+<li>&quot;Ciudad,PaísISO&quot; (p. ej., &quot;San Jose,CR&quot;, &quot;London,GB&quot;)</li>
+<li>&quot;Ciudad&quot; (si es única)</li>
+</ul>
+<h3 id="health-check-admin">Health check (ADMIN)</h3>
+<pre class="hljs"><code><div>GET /api/weather/health
+Authorization: Bearer &lt;admin_token&gt;
+</div></code></pre>
+<h3 id="notas-t%C3%A9cnicas-clima">Notas técnicas (clima)</h3>
+<ul>
+<li>Cache en memoria ~5 min (máx. ~500 entradas)</li>
+<li>Resilience4j: retry (x3), circuit breaker (50% fail → 30s), timeout (~2s), fallback</li>
+<li>Fuentes: <code>API</code> (OpenWeather), <code>CACHE</code>, <code>FALLBACK</code></li>
+</ul>
+
+</body>
+</html>
