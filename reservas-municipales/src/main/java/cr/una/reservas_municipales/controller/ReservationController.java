@@ -209,11 +209,6 @@ public class ReservationController {
         }
     }
     
-    // ===== ENDPOINTS QR =====
-    
-    /**
-     * POST /api/reservations/{id}/validate-qr - Validar código QR y marcar asistencia
-     */
     @PostMapping("/{id}/validate-qr")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<QRValidationDto> validateQRCode(@PathVariable UUID id,
@@ -222,12 +217,9 @@ public class ReservationController {
         log.info("POST /api/reservations/{}/validate-qr - Validando código QR", id);
         
         try {
-            // Obtener el usuario que está validando (podría ser el mismo usuario o un supervisor)
             String userEmail = authentication.getName();
             log.info("QR validation requested by user: {}", userEmail);
             
-            // Por simplicidad, usamos un UUID fijo para el validador
-            // En una implementación completa, consultaríamos la base de datos del usuario
             UUID validatedByUserId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
             
             QRValidationDto result = reservationService.validateQRAndMarkAttendance(
@@ -246,9 +238,6 @@ public class ReservationController {
         }
     }
     
-    /**
-     * POST /api/reservations/{id}/regenerate-qr - Regenerar código QR
-     */
     @PostMapping("/{id}/regenerate-qr")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
     public ResponseEntity<Map<String, String>> regenerateQRCode(@PathVariable UUID id) {
@@ -278,9 +267,6 @@ public class ReservationController {
         }
     }
     
-    /**
-     * GET /api/reservations/{id}/qr - Obtener código QR de la reserva
-     */
     @GetMapping("/{id}/qr")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<Map<String, Object>> getReservationQR(@PathVariable UUID id) {
@@ -312,9 +298,6 @@ public class ReservationController {
         }
     }
     
-    /**
-     * GET /api/reservations/{id}/qr/image - Obtener código QR como imagen PNG directa
-     */
     @GetMapping(value = "/{id}/qr/image", produces = "image/png")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
     public ResponseEntity<byte[]> getReservationQRImage(@PathVariable UUID id) {
@@ -330,7 +313,6 @@ public class ReservationController {
                 return ResponseEntity.badRequest().build();
             }
             
-            // Decodificar Base64 a bytes
             byte[] qrImageBytes = java.util.Base64.getDecoder().decode(reservation.getQrCode());
             
             return ResponseEntity.ok()
@@ -344,34 +326,24 @@ public class ReservationController {
         }
     }
     
-    // ===== ENDPOINTS EXPORTACIÓN EXCEL =====
-    
-    /**
-     * GET /api/reservations/export/excel - Exportar reservas del usuario autenticado a Excel
-     */
     @GetMapping("/export/excel")
 @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR') or hasRole('USER')")
 public ResponseEntity<byte[]> exportUserReservationsToExcel(Authentication authentication) {
     log.info("GET /api/reservations/export/excel - Exportando reservas del usuario autenticado");
     
     try {
-        // authentication.getName() retorna el UUID, NO el email
         String userId = authentication.getName();
         log.info("Usuario solicitando exportación (UUID): {}", userId);
         
-        // ✅ CAMBIO: Buscar por UUID en lugar de email
         User user = userRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userId));
         
         log.info("Usuario encontrado: {} ({})", user.getFullName(), user.getEmail());
         
-            // Obtener reservas con detalles del espacio
             List<ReservationWithSpaceDto> reservations = reservationService.getReservationsByUserWithSpaceDetails(user.getUserId());
             
-            // Generar resumen estadístico
             ReservationSummaryDto summary = reservationService.generateReservationSummary(user.getUserId());
             
-            // Generar archivo Excel
             byte[] excelBytes = reservationExportService.generateReservationsExcel(reservations, summary);
             
             String filename = "reservas_" + user.getFullName().replaceAll("\\s+", "_") + "_" + 
@@ -391,9 +363,6 @@ public ResponseEntity<byte[]> exportUserReservationsToExcel(Authentication authe
         }
     }
     
-    /**
-     * GET /api/reservations/export/excel/{userId} - Exportar reservas de un usuario específico (Admin/Supervisor)
-     */
     @GetMapping("/export/excel/{userId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
     public ResponseEntity<byte[]> exportUserReservationsToExcelByUserId(@PathVariable UUID userId, 
@@ -404,17 +373,13 @@ public ResponseEntity<byte[]> exportUserReservationsToExcel(Authentication authe
             String requestingUserEmail = authentication.getName();
             log.info("Admin/Supervisor {} solicitando exportación de usuario: {}", requestingUserEmail, userId);
             
-            // Verificar que el usuario objetivo existe
             User targetUser = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userId));
             
-            // Obtener reservas con detalles del espacio
             List<ReservationWithSpaceDto> reservations = reservationService.getReservationsByUserWithSpaceDetails(userId);
             
-            // Generar resumen estadístico
             ReservationSummaryDto summary = reservationService.generateReservationSummary(userId);
             
-            // Generar archivo Excel
             byte[] excelBytes = reservationExportService.generateReservationsExcel(reservations, summary);
             
             String filename = "reservas_" + targetUser.getFullName().replaceAll("\\s+", "_") + "_" + 

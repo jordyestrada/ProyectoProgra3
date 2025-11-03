@@ -44,22 +44,18 @@ public class AuthenticationService {
 
     private AzureProfile validateAzureIdToken(String idToken) {
         try {
-            // Valida firma RS256 y tiempos con el decodificador de Spring
             var decoder = buildAzureJwtDecoder();
 
             Jwt jwt = decoder.decode(idToken);
 
-            // aud puede ser String o lista según proveedor/token
             String aud = stringOrFirst(jwt.getClaim("aud"));
             if (!CLIENT_ID.equals(aud)) throw new SecurityException("aud inválido: " + aud);
 
-            // Acepta consumers/organizations/tenant, pero exige host + sufijo /v2.0
             String iss = jwt.getClaimAsString("iss");
             if (iss == null || !iss.startsWith("https://login.microsoftonline.com/") || !iss.endsWith("/v2.0")) {
                 throw new SecurityException("iss inválido: " + iss);
             }
 
-            // email puede ser "email" (string), "preferred_username" (string) o "emails" (array)
             String email = firstNonEmpty(
                     jwt.getClaimAsString("email"),
                     jwt.getClaimAsString("preferred_username"),
@@ -67,32 +63,27 @@ public class AuthenticationService {
             );
             if (email == null || email.isBlank()) throw new IllegalStateException("El token no trae email");
 
-            // name puede faltar; usa email como fallback
             String name = firstNonEmpty(
                     jwt.getClaimAsString("name"),
                     jwt.getClaimAsString("given_name"),
                     email
             );
 
-            // oid/sub y tid como strings
             String oid = firstNonEmpty(jwt.getClaimAsString("oid"), jwt.getClaimAsString("sub"));
             String tid = firstNonEmpty(jwt.getClaimAsString("tid"), "common");
 
             return new AzureProfile(email, name, oid, tid);
         } catch (Exception ex) {
-            // Mantén este mensaje para que el front muestre el detalle
             throw new RuntimeException("Azure authentication failed: " + ex.getMessage(), ex);
         }
     }
 
-    // Extracted for testability: allows tests to stub the decoder and simulate valid JWTs without network
     protected JwtDecoder buildAzureJwtDecoder() {
         return NimbusJwtDecoder.withJwkSetUri(JWKS_URL)
                 .jwsAlgorithm(SignatureAlgorithm.RS256)
                 .build();
     }
 
-    // Helpers tolerantes a arrays/listas
     private static String stringOrFirst(Object v) {
         if (v == null) return null;
         if (v instanceof String s) return s;
@@ -153,7 +144,6 @@ public class AuthenticationService {
     private User findOrCreateUserByEmail(String email, String name) {
         return userRepository.findByEmail(email)
             .orElseGet(() -> {
-                // Validación de dominio permitido
                 if (!email.toLowerCase().endsWith("@gmail.com") && 
                     !email.toLowerCase().endsWith("@estudiantec.cr") &&
                     !email.toLowerCase().endsWith("@itcr.ac.cr")) {
@@ -162,7 +152,6 @@ public class AuthenticationService {
                 
                 log.info("Creating new user from Azure AD: {}", email);
                 
-                // Buscar rol USER (debe existir en BD)
                 Role userRole = roleRepository.findById("USER")
                     .orElseThrow(() -> new IllegalStateException("Rol 'USER' no existe en la base de datos"));
                 
@@ -184,7 +173,6 @@ public class AuthenticationService {
             log.debug("Processing authentication request for email: {}", loginRequest.getEmail());
             log.debug("Azure token present: {}", loginRequest.getAzureToken() != null && !loginRequest.getAzureToken().isEmpty());
             log.debug("Email and password present: {}", loginRequest.getEmail() != null && loginRequest.getPassword() != null);
-            // Extra visibility using explicit labels as requested
             log.debug("Azure Token label: {}", loginRequest.getAzureToken() != null ? "[PRESENT]" : "[NULL]");
             
             if (loginRequest.getAzureToken() != null && !loginRequest.getAzureToken().isEmpty()) {
@@ -251,7 +239,7 @@ public class AuthenticationService {
             user.getFullName(),
             user.getEmail(),
             user.getRole().getCode(),
-            86400000L // 24 hours
+            86400000L 
         );
     }
 
@@ -262,11 +250,8 @@ public class AuthenticationService {
             return existingUser.get();
         }
         
-        // Create new user from Azure AD info
-        // Note: You'll need to implement proper role assignment logic
         log.info("Creating new user from Azure AD: {}", azureUserInfo.getEmail());
         
-        // For now, assign default role - you should implement proper role logic
         throw new RuntimeException("User not found in local database. Please contact administrator to create your account.");
     }
 
@@ -278,10 +263,6 @@ public class AuthenticationService {
         return jwtService.getUsernameFromToken(token);
     }
 
-    /**
-     * Returns current user info payload for /api/auth/me endpoint.
-     * Kept simple for now; can be extended later to include real user details.
-     */
     public java.util.Map<String, String> currentUserInfo() {
         java.util.Map<String, String> response = new java.util.HashMap<>();
         response.put("message", "User info endpoint - to be implemented");

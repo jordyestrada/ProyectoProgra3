@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app.jwt")
 public class JwtProperties {
-    private String secret = "mySecretKey123456789012345678901234567890"; // 256-bit secret
-    private long expiration = 86400000; // 24 hours in milliseconds
+    private String secret = "mySecretKey123456789012345678901234567890";
+    private long expiration = 86400000;
     private String issuer = "reservas-municipales";
 }

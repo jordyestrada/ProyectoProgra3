@@ -82,7 +82,7 @@ public class DataInitializationService implements CommandLineRunner {
             user.setUserId(UUID.randomUUID());
             user.setEmail(email);
             user.setFullName(fullName);
-            user.setPasswordHash("testpass"); // Plain text password for local testing
+            user.setPasswordHash("testpass"); 
             user.setRole(role);
             user.setActive(true);
             user.setCreatedAt(OffsetDateTime.now());

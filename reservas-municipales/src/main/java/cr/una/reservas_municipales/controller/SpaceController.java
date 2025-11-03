@@ -25,9 +25,6 @@ public class SpaceController {
 
     private final SpaceService spaceService;
 
-    /**
-     * GET /api/spaces - Obtener todos los espacios
-     */
     @GetMapping
     public ResponseEntity<List<SpaceDto>> getAllSpaces() {
         log.info("Fetching all spaces");
@@ -41,9 +38,6 @@ public class SpaceController {
         }
     }
 
-    /**
-     * GET /api/spaces/active - Obtener solo espacios activos
-     */
     @GetMapping("/active")
     public ResponseEntity<List<SpaceDto>> getActiveSpaces() {
         log.info("Fetching active spaces");
@@ -57,10 +51,6 @@ public class SpaceController {
         }
     }
 
-    /**
-     * GET /api/spaces/search - Búsqueda avanzada de espacios
-     * Parámetros de consulta opcionales para filtrar espacios
-     */
     @GetMapping("/search")
     public ResponseEntity<List<SpaceDto>> searchSpaces(
             @RequestParam(required = false) String name,
@@ -86,9 +76,6 @@ public class SpaceController {
         }
     }
 
-    /**
-     * GET /api/spaces/available - Buscar espacios disponibles en un rango de tiempo
-     */
     @GetMapping("/available")
     public ResponseEntity<List<SpaceDto>> getAvailableSpaces(
             @RequestParam String startDate,
@@ -111,9 +98,6 @@ public class SpaceController {
         }
     }
 
-    /**
-     * GET /api/spaces/{id} - Obtener espacio por ID
-     */
     @GetMapping("/{id}")
     public ResponseEntity<SpaceDto> getSpaceById(@PathVariable UUID id) {
         log.info("Fetching space with ID: {}", id);
@@ -132,16 +116,11 @@ public class SpaceController {
         }
     }
 
-    /**
-     * POST /api/spaces - Crear nuevo espacio SIN imágenes (JSON)
-     * Solo ADMIN y SUPERVISOR pueden crear espacios
-     */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
     public ResponseEntity<Object> createSpace(@Valid @RequestBody SpaceDto spaceDto) {
         log.info("Creating new space: {}", spaceDto.getName());
         try {
-            // Validar que el nombre sea único
             if (spaceService.existsByName(spaceDto.getName())) {
                 log.warn("Space name already exists: {}", spaceDto.getName());
                 Map<String, String> error = new HashMap<>();
@@ -162,10 +141,6 @@ public class SpaceController {
         }
     }
 
-    /**
-     * POST /api/spaces/with-images - Crear espacio CON imágenes (multipart/form-data)
-     * Solo ADMIN y SUPERVISOR pueden crear espacios
-     */
     @PostMapping("/with-images")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
     public ResponseEntity<Object> createSpaceWithImages(
@@ -179,7 +154,6 @@ public class SpaceController {
         log.info("Creating space with images: {}, images count: {}", name, images != null ? images.size() : 0);
         
         try {
-            // Validar que el nombre sea único
             if (spaceService.existsByName(name)) {
                 log.warn("Space name already exists: {}", name);
                 Map<String, String> error = new HashMap<>();
@@ -187,7 +161,6 @@ public class SpaceController {
                 return ResponseEntity.badRequest().body(error);
             }
             
-            // Crear DTO del espacio
             SpaceDto spaceDto = new SpaceDto();
             spaceDto.setName(name);
             spaceDto.setCapacity(capacity);
@@ -195,7 +168,6 @@ public class SpaceController {
             spaceDto.setOutdoor(outdoor);
             spaceDto.setDescription(description);
             
-            // Crear espacio con imágenes
             SpaceDto createdSpace = spaceService.createSpaceWithImages(spaceDto, images);
             log.info("Space with images created successfully: {}", createdSpace.getSpaceId());
             
@@ -210,10 +182,6 @@ public class SpaceController {
         }
     }
 
-    /**
-     * POST /api/spaces/{id}/images - Agregar imágenes a un espacio existente
-     * Solo ADMIN y SUPERVISOR pueden agregar imágenes
-     */
     @PostMapping("/{id}/images")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
     public ResponseEntity<Object> addImagesToSpace(
@@ -244,10 +212,6 @@ public class SpaceController {
         }
     }
 
-    /**
-     * DELETE /api/spaces/{spaceId}/images/{imageId} - Eliminar una imagen específica
-     * Solo ADMIN y SUPERVISOR pueden eliminar imágenes
-     */
     @DeleteMapping("/{spaceId}/images/{imageId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
     public ResponseEntity<Object> deleteSpaceImage(
@@ -278,16 +242,11 @@ public class SpaceController {
         }
     }
 
-    /**
-     * PUT /api/spaces/{id} - Actualizar espacio existente
-     * Solo ADMIN y SUPERVISOR pueden actualizar espacios
-     */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPERVISOR')")
     public ResponseEntity<Object> updateSpace(@PathVariable UUID id, @Valid @RequestBody SpaceDto spaceDto) {
         log.info("Updating space with ID: {}", id);
         try {
-            // Validar que el nombre sea único (excluyendo el espacio actual)
             if (spaceService.existsByNameAndNotId(spaceDto.getName(), id)) {
                 log.warn("Space name already exists for different space: {}", spaceDto.getName());
                 Map<String, String> error = new HashMap<>();
@@ -312,10 +271,6 @@ public class SpaceController {
         }
     }
 
-    /**
-     * DELETE /api/spaces/{id} - Desactivar espacio (soft delete)
-     * Solo ADMIN puede desactivar espacios
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Object> deactivateSpace(@PathVariable UUID id) {
@@ -340,11 +295,6 @@ public class SpaceController {
         }
     }
 
-    /**
-     * DELETE /api/spaces/{id}/permanent - Eliminar permanentemente
-     * Solo ADMIN puede eliminar permanentemente (usar con cuidado)
-     * NO permite eliminar si tiene reservas asociadas
-     */
     @DeleteMapping("/{id}/permanent")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Object> deleteSpacePermanent(@PathVariable UUID id) {
@@ -361,7 +311,6 @@ public class SpaceController {
                 return ResponseEntity.notFound().build();
             }
         } catch (IllegalStateException e) {
-            // Error de validación: tiene reservas asociadas
             log.warn("Cannot delete space {}: {}", id, e.getMessage());
             Map<String, String> error = new HashMap<>();
             error.put("error", "Cannot delete space");

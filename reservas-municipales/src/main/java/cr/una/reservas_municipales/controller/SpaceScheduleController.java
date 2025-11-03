@@ -14,10 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Controller for Space Schedule management - RF15
- * Endpoints for managing space operating hours
- */
 @RestController
 @RequestMapping("/api/spaces/{spaceId}/schedules")
 @RequiredArgsConstructor
@@ -26,11 +22,6 @@ public class SpaceScheduleController {
     
     private final SpaceScheduleService scheduleService;
     
-    /**
-     * GET /api/spaces/{spaceId}/schedules
-     * Get all schedules for a space
-     * Accessible by all authenticated users
-     */
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ScheduleDto>> getSchedulesBySpace(@PathVariable UUID spaceId) {
@@ -39,11 +30,6 @@ public class SpaceScheduleController {
         return ResponseEntity.ok(schedules);
     }
     
-    /**
-     * POST /api/spaces/{spaceId}/schedules
-     * Create a new schedule for a space
-     * Only ADMIN and SUPERVISOR can create schedules
-     */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<ScheduleDto> createSchedule(
@@ -54,11 +40,6 @@ public class SpaceScheduleController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
     
-    /**
-     * DELETE /api/spaces/{spaceId}/schedules/{scheduleId}
-     * Delete a specific schedule
-     * Only ADMIN and SUPERVISOR can delete schedules
-     */
     @DeleteMapping("/{scheduleId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<Void> deleteSchedule(
@@ -69,11 +50,6 @@ public class SpaceScheduleController {
         return ResponseEntity.noContent().build();
     }
     
-    /**
-     * DELETE /api/spaces/{spaceId}/schedules
-     * Delete all schedules for a space
-     * Only ADMIN can delete all schedules
-     */
     @DeleteMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteAllSchedules(@PathVariable UUID spaceId) {

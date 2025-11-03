@@ -36,16 +36,13 @@ public class SpaceImageService {
     @Transactional
     public SpaceImage addImage(UUID spaceId, String url, boolean isMain) {
         log.info("Adding image to space: {}", spaceId);
-        
-        // Verificar que el espacio existe
+
         if (!spaceRepository.existsById(spaceId)) {
             throw new IllegalArgumentException("Space not found with ID: " + spaceId);
         }
 
-        // Obtener el siguiente orden
         long imageCount = repository.countBySpaceId(spaceId);
-        
-        // Si esta será la imagen principal, quitar el flag de las demás
+
         if (isMain) {
             List<SpaceImage> existingImages = repository.findBySpaceIdOrderByOrdAsc(spaceId);
             existingImages.forEach(img -> {
@@ -57,7 +54,7 @@ public class SpaceImageService {
         SpaceImage image = new SpaceImage();
         image.setSpaceId(spaceId);
         image.setUrl(url);
-        image.setMain(isMain || imageCount == 0); // Primera imagen siempre es main
+        image.setMain(isMain || imageCount == 0);
         image.setOrd((int) (imageCount + 1));
         image.setCreatedAt(OffsetDateTime.now());
 
@@ -67,14 +64,14 @@ public class SpaceImageService {
     @Transactional
     public Optional<SpaceImage> updateImage(Long imageId, String url, Boolean isMain) {
         log.info("Updating image: {}", imageId);
-        
+
         return repository.findById(imageId).map(image -> {
             if (url != null) {
                 image.setUrl(url);
             }
-            
+
             if (isMain != null && isMain) {
-                // Quitar flag main de otras imágenes del mismo espacio
+
                 List<SpaceImage> spaceImages = repository.findBySpaceIdOrderByOrdAsc(image.getSpaceId());
                 spaceImages.forEach(img -> {
                     if (!img.getImageId().equals(imageId)) {
@@ -86,7 +83,7 @@ public class SpaceImageService {
             } else if (isMain != null) {
                 image.setMain(false);
             }
-            
+
             return repository.save(image);
         });
     }
@@ -94,7 +91,7 @@ public class SpaceImageService {
     @Transactional
     public boolean deleteImage(Long imageId) {
         log.info("Deleting image: {}", imageId);
-        
+
         Optional<SpaceImage> imageOpt = repository.findById(imageId);
         if (imageOpt.isEmpty()) {
             return false;
@@ -103,10 +100,9 @@ public class SpaceImageService {
         SpaceImage image = imageOpt.get();
         UUID spaceId = image.getSpaceId();
         boolean wasMain = image.isMain();
-        
+
         repository.deleteById(imageId);
-        
-        // Si era la imagen principal, establecer otra como principal
+
         if (wasMain) {
             List<SpaceImage> remainingImages = repository.findBySpaceIdOrderByOrdAsc(spaceId);
             if (!remainingImages.isEmpty()) {
@@ -116,7 +112,7 @@ public class SpaceImageService {
                 log.info("New main image set: {}", newMain.getImageId());
             }
         }
-        
+
         return true;
     }
 
@@ -129,10 +125,10 @@ public class SpaceImageService {
     @Transactional
     public void reorderImages(UUID spaceId, List<Long> imageIds) {
         log.info("Reordering images for space: {}", spaceId);
-        
+
         for (int i = 0; i < imageIds.size(); i++) {
             Long imageId = imageIds.get(i);
-            final int newOrder = i + 1; // Make it effectively final
+            final int newOrder = i + 1;
             repository.findById(imageId).ifPresent(image -> {
                 if (image.getSpaceId().equals(spaceId)) {
                     image.setOrd(newOrder);

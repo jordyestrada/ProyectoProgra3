@@ -18,10 +18,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Cliente HTTP para consumir OpenWeatherMap API
- * Incluye retry, circuit breaker y fallback
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -37,12 +33,6 @@ public class WeatherApiClient {
     @Value("${weather.api.geocoding-url}")
     private String geocodingBaseUrl;
     
-    /**
-     * Obtiene información del clima por coordenadas geográficas
-     * @param latitude Latitud
-     * @param longitude Longitud
-     * @return Datos meteorológicos
-     */
     @Retry(name = "weatherApi", fallbackMethod = "getWeatherByCoordinatesFallback")
     @CircuitBreaker(name = "weatherApi", fallbackMethod = "getWeatherByCoordinatesFallback")
     public OpenWeatherResponseDTO getWeatherByCoordinates(Double latitude, Double longitude) {
@@ -86,36 +76,25 @@ public class WeatherApiClient {
         }
     }
 
-    /**
-     * Fallback para getWeatherByCoordinates
-     */
     private OpenWeatherResponseDTO getWeatherByCoordinatesFallback(Double latitude, Double longitude, Throwable t) {
         log.warn("Using fallback for coordinates: lat={}, lon={}, reason={}", 
                 latitude, longitude, t.getMessage());
         
-        // Retornar respuesta genérica de fallback
         return createFallbackResponse(latitude, longitude);
     }
 
-    /**
-     * Obtiene información del clima por nombre de ciudad
-     * @param location Nombre de la ciudad (ej: "San Jose,CR")
-     * @return Datos meteorológicos
-     */
     @Retry(name = "weatherApi", fallbackMethod = "getWeatherByLocationFallback")
     @CircuitBreaker(name = "weatherApi", fallbackMethod = "getWeatherByLocationFallback")
     public OpenWeatherResponseDTO getWeatherByLocation(String location) {
         try {
             log.info("Buscando coordenadas para location: {}", location);
             
-            // Primero obtener coordenadas con Geocoding API
             Map<String, Double> coordinates = getCoordinatesByLocation(location);
             
             if (coordinates == null || coordinates.get("lat") == null || coordinates.get("lon") == null) {
                 throw new WeatherApiException("No se pudieron obtener coordenadas para: " + location);
             }
             
-            // Luego obtener clima con esas coordenadas
             return getWeatherByCoordinates(coordinates.get("lat"), coordinates.get("lon"));
             
         } catch (WeatherApiException e) {
@@ -126,19 +105,12 @@ public class WeatherApiClient {
         }
     }
 
-    /**
-     * Fallback para getWeatherByLocation
-     */
     private OpenWeatherResponseDTO getWeatherByLocationFallback(String location, Throwable t) {
         log.warn("Using fallback for location: {}, reason={}", location, t.getMessage());
         
-        // Retornar respuesta genérica sin coordenadas específicas
         return createFallbackResponse(0.0, 0.0);
     }
 
-    /**
-     * Obtiene coordenadas geográficas por nombre de ciudad usando Geocoding API
-     */
     private Map<String, Double> getCoordinatesByLocation(String location) {
         try {
             WebClient geocodingClient = WebClient.builder()
@@ -176,16 +148,12 @@ public class WeatherApiClient {
         }
     }
 
-    /**
-     * Crea una respuesta genérica de fallback
-     */
     private OpenWeatherResponseDTO createFallbackResponse(Double latitude, Double longitude) {
         OpenWeatherResponseDTO fallback = new OpenWeatherResponseDTO();
         fallback.setLat(latitude);
         fallback.setLon(longitude);
         fallback.setTimezone("Unknown");
         
-        // Crear datos actuales genéricos
         OpenWeatherResponseDTO.Current current = new OpenWeatherResponseDTO.Current();
         current.setTemp(0.0);
         current.setFeelsLike(0.0);
@@ -201,7 +169,6 @@ public class WeatherApiClient {
         
         fallback.setCurrent(current);
         
-        // Crear datos diarios genéricos
         OpenWeatherResponseDTO.Daily daily = new OpenWeatherResponseDTO.Daily();
         daily.setPop(0.0);
         daily.setWeather(List.of(weather));
@@ -211,12 +178,8 @@ public class WeatherApiClient {
         return fallback;
     }
 
-    /**
-     * Health check del cliente
-     */
     public boolean isHealthy() {
         try {
-            // Probar con coordenadas de San José, CR
             getWeatherByCoordinates(9.9281, -84.0907);
             return true;
         } catch (Exception e) {

@@ -29,15 +29,15 @@ public class ReservationExportService {
         
         try (Workbook workbook = new XSSFWorkbook()) {
             
-            // Hoja 1: Datos de reservaciones
+            
             Sheet reservationsSheet = workbook.createSheet("Reservaciones");
             createReservationsSheet(reservationsSheet, reservations, workbook);
             
-            // Hoja 2: Resumen estadístico
+            
             Sheet summarySheet = workbook.createSheet("Resumen");
             createSummarySheet(summarySheet, summary, workbook);
             
-            // Convertir a bytes
+            
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
             
@@ -47,13 +47,13 @@ public class ReservationExportService {
     }
 
     private void createReservationsSheet(Sheet sheet, List<ReservationWithSpaceDto> reservations, Workbook workbook) {
-        // Crear estilos
+        
         CellStyle headerStyle = createHeaderStyle(workbook);
         CellStyle dataStyle = createDataStyle(workbook);
         CellStyle currencyStyle = createCurrencyStyle(workbook);
         CellStyle dateStyle = createDateStyle(workbook);
 
-        // Headers
+        
         Row headerRow = sheet.createRow(0);
         String[] headers = {
             "ID Reserva", "Espacio", "Fecha Inicio", "Fecha Fin", 
@@ -66,37 +66,37 @@ public class ReservationExportService {
             cell.setCellStyle(headerStyle);
         }
 
-        // Datos
+        
         int rowNum = 1;
         for (ReservationWithSpaceDto reservation : reservations) {
             Row row = sheet.createRow(rowNum++);
             
-            // ID Reserva
+            
             Cell cell0 = row.createCell(0);
             cell0.setCellValue(reservation.getReservationId().toString());
             cell0.setCellStyle(dataStyle);
             
-            // Espacio
+            
             Cell cell1 = row.createCell(1);
             cell1.setCellValue(reservation.getSpaceName());
             cell1.setCellStyle(dataStyle);
             
-            // Fecha Inicio
+            
             Cell cell2 = row.createCell(2);
             cell2.setCellValue(reservation.getStartsAt().format(DATE_FORMATTER));
             cell2.setCellStyle(dateStyle);
             
-            // Fecha Fin
+            
             Cell cell3 = row.createCell(3);
             cell3.setCellValue(reservation.getEndsAt().format(DATE_FORMATTER));
             cell3.setCellStyle(dateStyle);
             
-            // Estado
+            
             Cell cell4 = row.createCell(4);
             cell4.setCellValue(getStatusDisplayName(reservation.getStatus()));
             cell4.setCellStyle(dataStyle);
             
-            // Monto Total
+            
             Cell cell5 = row.createCell(5);
             if (reservation.getTotalAmount() != null) {
                 cell5.setCellValue(reservation.getTotalAmount().doubleValue());
@@ -105,23 +105,23 @@ public class ReservationExportService {
             }
             cell5.setCellStyle(currencyStyle);
             
-            // Moneda
+            
             Cell cell6 = row.createCell(6);
             cell6.setCellValue(reservation.getCurrency() != null ? reservation.getCurrency() : "CRC");
             cell6.setCellStyle(dataStyle);
             
-            // Fecha Creación
+            
             Cell cell7 = row.createCell(7);
             cell7.setCellValue(reservation.getCreatedAt().format(DATE_ONLY_FORMATTER));
             cell7.setCellStyle(dateStyle);
             
-            // Observaciones
+            
             Cell cell8 = row.createCell(8);
             cell8.setCellValue(reservation.getObservations());
             cell8.setCellStyle(dataStyle);
         }
 
-        // Auto-ajustar columnas
+        
         for (int i = 0; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
         }
@@ -135,16 +135,16 @@ public class ReservationExportService {
 
         int rowNum = 0;
 
-        // Título principal
+        
         Row titleRow = sheet.createRow(rowNum++);
         Cell titleCell = titleRow.createCell(0);
         titleCell.setCellValue("REPORTE DE RESERVACIONES");
         titleCell.setCellStyle(titleStyle);
         
-        // Espacio
+        
         rowNum++;
         
-        // Información del usuario
+        
         Row userRow = sheet.createRow(rowNum++);
         Cell userLabelCell = userRow.createCell(0);
         userLabelCell.setCellValue("Usuario:");
@@ -161,16 +161,16 @@ public class ReservationExportService {
         emailValueCell.setCellValue(summary.getUserEmail());
         emailValueCell.setCellStyle(dataStyle);
         
-        // Espacio
+        
         rowNum++;
         
-        // Estadísticas
+        
         Row statsHeaderRow = sheet.createRow(rowNum++);
         Cell statsHeaderCell = statsHeaderRow.createCell(0);
         statsHeaderCell.setCellValue("ESTADÍSTICAS");
         statsHeaderCell.setCellStyle(titleStyle);
         
-        // Total de reservas
+        
         Row totalRow = sheet.createRow(rowNum++);
         Cell totalLabelCell = totalRow.createCell(0);
         totalLabelCell.setCellValue("Total de Reservas:");
@@ -179,7 +179,7 @@ public class ReservationExportService {
         totalValueCell.setCellValue(summary.getTotalReservations());
         totalValueCell.setCellStyle(dataStyle);
         
-        // Reservas confirmadas
+        
         Row confirmedRow = sheet.createRow(rowNum++);
         Cell confirmedLabelCell = confirmedRow.createCell(0);
         confirmedLabelCell.setCellValue("Reservas Confirmadas:");
@@ -188,7 +188,7 @@ public class ReservationExportService {
         confirmedValueCell.setCellValue(summary.getConfirmedReservations());
         confirmedValueCell.setCellStyle(dataStyle);
         
-        // Reservas canceladas
+        
         Row cancelledRow = sheet.createRow(rowNum++);
         Cell cancelledLabelCell = cancelledRow.createCell(0);
         cancelledLabelCell.setCellValue("Reservas Canceladas:");
@@ -197,7 +197,7 @@ public class ReservationExportService {
         cancelledValueCell.setCellValue(summary.getCancelledReservations());
         cancelledValueCell.setCellStyle(dataStyle);
         
-        // Reservas pendientes
+        
         Row pendingRow = sheet.createRow(rowNum++);
         Cell pendingLabelCell = pendingRow.createCell(0);
         pendingLabelCell.setCellValue("Reservas Pendientes:");
@@ -206,7 +206,7 @@ public class ReservationExportService {
         pendingValueCell.setCellValue(summary.getPendingReservations());
         pendingValueCell.setCellStyle(dataStyle);
         
-        // Reservas completadas
+        
         Row completedRow = sheet.createRow(rowNum++);
         Cell completedLabelCell = completedRow.createCell(0);
         completedLabelCell.setCellValue("Reservas Completadas:");
@@ -215,7 +215,7 @@ public class ReservationExportService {
         completedValueCell.setCellValue(summary.getCompletedReservations());
         completedValueCell.setCellStyle(dataStyle);
         
-        // Total dinero pagado
+        
         Row amountRow = sheet.createRow(rowNum++);
         Cell amountLabelCell = amountRow.createCell(0);
         amountLabelCell.setCellValue("Total Dinero Pagado:");
@@ -228,7 +228,7 @@ public class ReservationExportService {
         }
         amountValueCell.setCellStyle(currencyStyle);
         
-        // Moneda
+        
         Row currencyRow = sheet.createRow(rowNum++);
         Cell currencyLabelCell = currencyRow.createCell(0);
         currencyLabelCell.setCellValue("Moneda:");
@@ -237,7 +237,7 @@ public class ReservationExportService {
         currencyValueCell.setCellValue(summary.getCurrency() != null ? summary.getCurrency() : "CRC");
         currencyValueCell.setCellStyle(dataStyle);
 
-        // Auto-ajustar columnas
+        
         sheet.autoSizeColumn(0);
         sheet.autoSizeColumn(1);
     }

@@ -7,5 +7,5 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class FileStorageService {
-    // TODO: Implementar funcionalidades de almacenamiento de archivos
+    
 }

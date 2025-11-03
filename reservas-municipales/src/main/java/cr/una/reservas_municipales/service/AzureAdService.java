@@ -84,7 +84,7 @@ public class AzureAdService {
             return new AzureUserInfoBuilder();
         }
 
-        // Getters and setters
+        
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
         

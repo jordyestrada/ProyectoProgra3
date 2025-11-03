@@ -18,9 +18,9 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager("dashboardMetrics", "weatherCache");
         cacheManager.setCaffeine(Caffeine.newBuilder()
-            .expireAfterWrite(10, TimeUnit.MINUTES)  // Cache por 10 minutos
+            .expireAfterWrite(10, TimeUnit.MINUTES)
             .maximumSize(100)
-            .recordStats());  // Para monitoreo de cache
+            .recordStats());
         return cacheManager;
     }
 }

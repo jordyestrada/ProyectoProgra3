@@ -14,9 +14,6 @@ import reactor.netty.http.client.HttpClient;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Configuración del WebClient para consumir la API del clima
- */
 @Configuration
 @RequiredArgsConstructor
 @Slf4j
@@ -26,7 +23,6 @@ public class WeatherWebClientConfig {
 
     @Bean(name = "weatherWebClient")
     public WebClient weatherWebClient() {
-        // Configurar timeout y opciones de conexión
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, weatherApiProperties.getTimeout())
                 .responseTimeout(Duration.ofMillis(weatherApiProperties.getTimeout()))

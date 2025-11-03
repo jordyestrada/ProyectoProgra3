@@ -83,22 +83,22 @@ public class ReviewService {
         log.info("Creando nueva reseña para espacio: {} usuario: {}", 
                 reviewDto.getSpaceId(), reviewDto.getUserId());
         
-        // Validar que el espacio existe
+        
         if (!spaceRepository.existsById(reviewDto.getSpaceId())) {
             throw new RuntimeException("El espacio especificado no existe");
         }
         
-        // Validar que el usuario existe
+        
         if (!userRepository.existsById(reviewDto.getUserId())) {
             throw new RuntimeException("El usuario especificado no existe");
         }
         
-        // Validar que la reserva existe (si se proporciona)
+        
         if (reviewDto.getReservationId() != null) {
             Reservation reservation = reservationRepository.findById(reviewDto.getReservationId())
                     .orElseThrow(() -> new RuntimeException("La reserva especificada no existe"));
             
-            // VALIDACIÓN POST-USO: Solo se puede reseñar si la reserva está confirmada o completada
+            
             if (!"CONFIRMED".equals(reservation.getStatus()) && !"COMPLETED".equals(reservation.getStatus())) {
                 throw new RuntimeException(
                     "Solo se pueden reseñar espacios de reservas confirmadas o completadas. " +
@@ -106,7 +106,7 @@ public class ReviewService {
                 );
             }
             
-            // VALIDACIÓN POST-USO: Solo se puede reseñar después de que pase la fecha de fin de la reserva
+            
             if (reservation.getEndsAt().isAfter(java.time.OffsetDateTime.now())) {
                 throw new RuntimeException(
                     "Solo se puede reseñar un espacio después de haber usado la reserva. " +
@@ -116,22 +116,22 @@ public class ReviewService {
                 );
             }
             
-            // Verificar que el usuario de la reseña es el mismo que hizo la reserva
+            
             if (!reservation.getUserId().equals(reviewDto.getUserId())) {
                 throw new RuntimeException(
                     "Solo el usuario que realizó la reserva puede hacer una reseña de este espacio"
                 );
             }
             
-            // Verificar que no existe ya una reseña para esta reserva
+            
             if (reviewRepository.existsByReservationId(reviewDto.getReservationId())) {
                 throw new RuntimeException("Ya existe una reseña para esta reserva");
             }
         }
         
         ReviewEntity review = convertToEntity(reviewDto);
-        // No necesitamos establecer createdAt y visible aquí, 
-        // se hace automáticamente en @PrePersist
+        
+        
         
         ReviewEntity saved = reviewRepository.save(review);
         log.info("Reseña creada exitosamente con ID: {}", saved.getReviewId());
@@ -145,7 +145,7 @@ public class ReviewService {
         
         return reviewRepository.findById(id)
                 .map(existingReview -> {
-                    // Actualizar campos permitidos
+                    
                     if (reviewDto.getRating() != null) {
                         existingReview.setRating(reviewDto.getRating());
                     }
@@ -193,8 +193,8 @@ public class ReviewService {
     private ReviewEntity convertToEntity(ReviewDto dto) {
         ReviewEntity review = new ReviewEntity();
         
-        // Solo asignar el ID si ya existe (para actualizaciones)
-        // Para nuevas entidades, el ID debe ser null para auto-generación
+        
+        
         if (dto.getReviewId() != null) {
             review.setReviewId(dto.getReviewId());
         }
@@ -206,7 +206,7 @@ public class ReviewService {
         review.setComment(dto.getComment());
         review.setVisible(dto.getVisible() != null ? dto.getVisible() : true);
         
-        // Para nuevas entidades, createdAt se establecerá en @PrePersist
+        
         if (dto.getCreatedAt() != null) {
             review.setCreatedAt(dto.getCreatedAt());
         }

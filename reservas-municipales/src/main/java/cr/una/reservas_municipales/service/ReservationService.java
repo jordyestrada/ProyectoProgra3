@@ -95,23 +95,19 @@ public class ReservationService {
         log.info("Creando nueva reserva para espacio: {} usuario: {}", 
                 reservationDto.getSpaceId(), reservationDto.getUserId());
         
-        // Validar que el espacio existe
         if (!spaceRepository.existsById(reservationDto.getSpaceId())) {
             throw new BusinessException("El espacio especificado no existe");
         }
         
-        // Validar que el usuario existe
         if (!userRepository.existsById(reservationDto.getUserId())) {
             throw new BusinessException("El usuario especificado no existe");
         }
         
-        // Validar que la fecha de fin sea posterior a la de inicio
         if (reservationDto.getEndsAt().isBefore(reservationDto.getStartsAt()) || 
             reservationDto.getEndsAt().isEqual(reservationDto.getStartsAt())) {
             throw new BusinessException("La fecha de fin debe ser posterior a la fecha de inicio");
         }
         
-        // Verificar que no hay conflictos de horario
         List<Reservation> conflicts = reservationRepository.findConflictingReservations(
                 reservationDto.getSpaceId(),
                 reservationDto.getStartsAt(),
@@ -122,7 +118,6 @@ public class ReservationService {
             throw new BusinessException("Ya existe una reserva confirmada o pendiente para ese espacio en el horario solicitado");
         }
         
-        // RF15: Validar que la reserva está dentro del horario del espacio
         validateSchedule(reservationDto.getSpaceId(), reservationDto.getStartsAt(), reservationDto.getEndsAt());
         
         Reservation reservation = convertToEntity(reservationDto);
@@ -130,17 +125,14 @@ public class ReservationService {
         reservation.setCreatedAt(OffsetDateTime.now());
         reservation.setUpdatedAt(OffsetDateTime.now());
         
-        // Si no se especifica estado, se asigna PENDING por defecto
         if (reservation.getStatus() == null || reservation.getStatus().isEmpty()) {
             reservation.setStatus("PENDING");
         }
         
-        // Si no se especifica moneda, se asigna CRC por defecto
         if (reservation.getCurrency() == null || reservation.getCurrency().isEmpty()) {
             reservation.setCurrency("CRC");
         }
         
-        // Generar código QR automáticamente para la reserva
         try {
             String qrCode = qrCodeService.generateQRCode(
                 reservation.getReservationId(),
@@ -156,7 +148,6 @@ public class ReservationService {
             log.info("QR code generated successfully for reservation: {}", reservation.getReservationId());
         } catch (Exception e) {
             log.error("Error generating QR code for reservation: {}", reservation.getReservationId(), e);
-            // No fallar toda la operación si solo falla la generación del QR
         }
         
         Reservation saved = reservationRepository.save(reservation);
@@ -189,18 +180,14 @@ public class ReservationService {
         return reservationRepository.findById(id)
                 .map(existingReservation -> {
                 String oldStatus = existingReservation.getStatus();
-                // Verificar conflictos de horario solo si se cambian las fechas
                 if (reservationDto.getStartsAt() != null && reservationDto.getEndsAt() != null) {
-                    // Validar que la fecha de fin sea posterior a la de inicio
                     if (reservationDto.getEndsAt().isBefore(reservationDto.getStartsAt()) || 
                         reservationDto.getEndsAt().isEqual(reservationDto.getStartsAt())) {
                         throw new BusinessException("La fecha de fin debe ser posterior a la fecha de inicio");
                     }
                     
-                    // RF15: Validar que la reserva está dentro del horario del espacio
                     validateSchedule(existingReservation.getSpaceId(), reservationDto.getStartsAt(), reservationDto.getEndsAt());
                     
-                    // Verificar conflictos (excluyendo la reserva actual)
                     List<Reservation> conflicts = reservationRepository.findConflictingReservations(
                             existingReservation.getSpaceId(),
                             reservationDto.getStartsAt(),
@@ -217,7 +204,6 @@ public class ReservationService {
                         existingReservation.setEndsAt(reservationDto.getEndsAt());
                     }
                     
-                    // Actualizar campos permitidos
                     if (reservationDto.getStatus() != null) {
                         existingReservation.setStatus(reservationDto.getStatus());
                     }
@@ -271,7 +257,6 @@ public class ReservationService {
         
         return reservationRepository.findById(id)
                 .map(reservation -> {
-                    // VALIDACIÓN: Verificar si la reserva ya está cancelada
                     if ("CANCELLED".equals(reservation.getStatus())) {
                         String errorMsg = "Esta reserva ya se encuentra cancelada.";
                         log.warn("Intento de cancelar reserva {} que ya está cancelada", id);
@@ -281,14 +266,11 @@ public class ReservationService {
                     OffsetDateTime now = OffsetDateTime.now();
                     OffsetDateTime reservationStart = reservation.getStartsAt();
                     
-                    // Calcular horas hasta el inicio de la reserva
-                    // ChronoUnit.HOURS.between() automáticamente normaliza a UTC para comparación correcta
                     long hoursUntilStart = ChronoUnit.HOURS.between(now, reservationStart);
                     
                     log.info("Reserva {} inicia en {} horas. Mínimo requerido: {} horas", 
                              id, hoursUntilStart, minHoursBeforeCancellation);
                     
-                    // VALIDACIÓN: Solo ADMIN puede cancelar con menos de X horas de anticipación
                     if (hoursUntilStart < minHoursBeforeCancellation && !"ADMIN".equals(currentUserRole)) {
                         String errorMsg = String.format(
                             "La cancelación debe realizarse con al menos %d horas de anticipación. " +
@@ -365,7 +347,6 @@ public class ReservationService {
         dto.setCreatedAt(reservation.getCreatedAt());
         dto.setUpdatedAt(reservation.getUpdatedAt());
         
-        // Campos QR y asistencia
         dto.setQrCode(reservation.getQrCode());
         dto.setQrValidationToken(reservation.getQrValidationToken());
         dto.setAttendanceConfirmed(reservation.getAttendanceConfirmed());
@@ -390,7 +371,6 @@ public class ReservationService {
         reservation.setCreatedAt(dto.getCreatedAt());
         reservation.setUpdatedAt(dto.getUpdatedAt());
         
-        // Campos QR y asistencia
         reservation.setQrCode(dto.getQrCode());
         reservation.setQrValidationToken(dto.getQrValidationToken());
         reservation.setAttendanceConfirmed(dto.getAttendanceConfirmed());
@@ -400,9 +380,6 @@ public class ReservationService {
         return reservation;
     }
     
-    /**
-     * Valida un código QR y marca la asistencia si es válido
-     */
     @Transactional
     public QRValidationDto validateQRAndMarkAttendance(UUID reservationId, String qrContent, UUID validatedByUserId) {
         log.info("Validating QR for reservation: {}", reservationId);
@@ -410,24 +387,20 @@ public class ReservationService {
         return reservationRepository.findById(reservationId)
                 .map(reservation -> {
                     try {
-                        // Validar el código QR
                         boolean isValidQR = qrCodeService.validateQRCode(qrContent, reservationId);
                         
                         if (!isValidQR) {
                             return new QRValidationDto(reservationId, false, "Código QR inválido");
                         }
                         
-                        // Verificar que la reserva esté confirmada
                         if (!"CONFIRMED".equals(reservation.getStatus())) {
                             return new QRValidationDto(reservationId, false, "La reserva debe estar confirmada para validar asistencia");
                         }
                         
-                        // Verificar que no se haya marcado asistencia previamente
                         if (Boolean.TRUE.equals(reservation.getAttendanceConfirmed())) {
                             return new QRValidationDto(reservationId, false, "La asistencia ya fue confirmada previamente");
                         }
                         
-                        // Marcar asistencia confirmada
                         reservation.setAttendanceConfirmed(true);
                         reservation.setAttendanceConfirmedAt(OffsetDateTime.now());
                         reservation.setConfirmedByUserId(validatedByUserId);
@@ -463,9 +436,6 @@ public class ReservationService {
                 .orElse(new QRValidationDto(reservationId, false, "Reserva no encontrada"));
     }
     
-    /**
-     * Regenera el código QR para una reserva existente
-     */
     @Transactional
     public String regenerateQRCode(UUID reservationId) {
         log.info("Regenerating QR code for reservation: {}", reservationId);
@@ -497,28 +467,20 @@ public class ReservationService {
                 .orElseThrow(() -> new RuntimeException("Reservation not found"));
     }
     
-    /**
-     * RF15: Valida que una reserva está dentro del horario operativo del espacio
-     * Si el espacio tiene horarios configurados, valida que la reserva esté dentro de ellos
-     * Si no tiene horarios configurados, permite cualquier horario (backward compatibility)
-     */
     private void validateSchedule(UUID spaceId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
-        // Verificar si el espacio tiene horarios configurados
         boolean hasSchedules = spaceScheduleRepository.existsBySpace_SpaceId(spaceId);
         
         if (!hasSchedules) {
             log.debug("Space {} has no schedules configured, allowing reservation", spaceId);
-            return; // Si no hay horarios, permite cualquier horario
+            return;
         }
         
-        // Convertir a zona horaria de Costa Rica para validar contra horarios locales
         java.time.ZoneId costaRicaZone = java.time.ZoneId.of("America/Costa_Rica");
         java.time.ZonedDateTime localStartsAt = startsAt.atZoneSameInstant(costaRicaZone);
         java.time.ZonedDateTime localEndsAt = endsAt.atZoneSameInstant(costaRicaZone);
         
-        // Convertir DayOfWeek (1=Monday, 7=Sunday) a weekday (0=Sunday, 1=Monday)
         DayOfWeek dayOfWeek = localStartsAt.getDayOfWeek();
-        short weekday = (short) (dayOfWeek.getValue() % 7); // 1-7 -> 1-6,0
+        short weekday = (short) (dayOfWeek.getValue() % 7);
         
         LocalTime startTime = localStartsAt.toLocalTime();
         LocalTime endTime = localEndsAt.toLocalTime();
@@ -526,7 +488,6 @@ public class ReservationService {
         log.debug("Validating reservation for space {} on weekday {} ({}) from {} to {}", 
                 spaceId, weekday, dayOfWeek, startTime, endTime);
         
-        // Obtener los horarios del espacio para ese día
         List<SpaceSchedule> schedules = spaceScheduleRepository.findBySpace_SpaceIdAndWeekday(spaceId, weekday);
         
         if (schedules.isEmpty()) {
@@ -535,10 +496,8 @@ public class ReservationService {
             );
         }
         
-        // Verificar que la reserva está dentro de alguno de los horarios del espacio
         boolean isWithinSchedule = false;
         for (SpaceSchedule schedule : schedules) {
-            // La reserva debe comenzar y terminar dentro del mismo bloque horario
             if (!startTime.isBefore(schedule.getTimeFrom()) && 
                 !endTime.isAfter(schedule.getTimeTo())) {
                 isWithinSchedule = true;
@@ -547,7 +506,6 @@ public class ReservationService {
         }
         
         if (!isWithinSchedule) {
-            // Construir mensaje con los horarios disponibles
             String availableTimes = schedules.stream()
                     .map(s -> s.getTimeFrom() + " - " + s.getTimeTo())
                     .collect(Collectors.joining(", "));
@@ -561,9 +519,6 @@ public class ReservationService {
         log.debug("Reservation validated successfully within schedule");
     }
     
-    /**
-     * Helper para obtener nombre del día en español
-     */
     private String getDayName(short weekday) {
         return switch (weekday) {
             case 0 -> "domingo";
@@ -577,9 +532,6 @@ public class ReservationService {
         };
     }
     
-    /**
-     * Obtiene las reservas de un usuario con información detallada del espacio
-     */
     @Transactional(readOnly = true)
     public List<ReservationWithSpaceDto> getReservationsByUserWithSpaceDetails(UUID userId) {
         log.info("Obteniendo reservas con detalles de espacio para usuario: {}", userId);
@@ -591,20 +543,15 @@ public class ReservationService {
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Genera un resumen estadístico de las reservas de un usuario
-     */
     @Transactional(readOnly = true)
     public ReservationSummaryDto generateReservationSummary(UUID userId) {
         log.info("Generando resumen de reservas para usuario: {}", userId);
         
         List<Reservation> reservations = reservationRepository.findByUserIdOrderByStartsAtDesc(userId);
         
-        // Obtener información del usuario
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         
-        // Calcular estadísticas
         long totalReservations = reservations.size();
         long confirmedReservations = reservations.stream()
                 .filter(r -> "CONFIRMED".equals(r.getStatus()))
@@ -619,14 +566,12 @@ public class ReservationService {
                 .filter(r -> "COMPLETED".equals(r.getStatus()))
                 .count();
         
-        // Calcular total de dinero pagado (solo reservas confirmadas o completadas)
         BigDecimal totalAmountPaid = reservations.stream()
                 .filter(r -> "CONFIRMED".equals(r.getStatus()) || "COMPLETED".equals(r.getStatus()))
                 .map(Reservation::getTotalAmount)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        // Obtener moneda más común
         String currency = reservations.stream()
                 .map(Reservation::getCurrency)
                 .filter(Objects::nonNull)
@@ -646,13 +591,9 @@ public class ReservationService {
                 .build();
     }
     
-    /**
-     * Convierte una entidad Reservation a ReservationWithSpaceDto incluyendo información del espacio
-     */
     private ReservationWithSpaceDto convertToReservationWithSpaceDto(Reservation reservation) {
         ReservationWithSpaceDto dto = new ReservationWithSpaceDto();
         
-        // Datos de la reserva
         dto.setReservationId(reservation.getReservationId());
         dto.setSpaceId(reservation.getSpaceId());
         dto.setUserId(reservation.getUserId());
@@ -666,7 +607,6 @@ public class ReservationService {
         dto.setCreatedAt(reservation.getCreatedAt());
         dto.setUpdatedAt(reservation.getUpdatedAt());
         
-        // Obtener información del espacio
         spaceRepository.findById(reservation.getSpaceId()).ifPresent(space -> {
             dto.setSpaceName(space.getName());
             dto.setSpaceLocation(space.getLocation());

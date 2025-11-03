@@ -16,9 +16,6 @@ import org.springframework.stereotype.Service;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * Servicio para obtener información del clima para espacios al aire libre
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -27,32 +24,22 @@ public class WeatherService {
     private final WeatherApiClient weatherApiClient;
     private final SpaceRepository spaceRepository;
 
-    /**
-     * Obtiene el clima para un espacio específico
-     * @param spaceId ID del espacio
-     * @return Información del clima con recomendaciones
-     */
     @Cacheable(value = "weatherCache", key = "'space_' + #spaceId")
     public WeatherDTO getWeatherForSpace(UUID spaceId) {
         log.info("Fetching weather for space {}", spaceId);
-        
-        // 1. Buscar el espacio en la base de datos
+
         Space space = spaceRepository.findById(spaceId)
                 .orElseThrow(() -> new SpaceNotFoundException("Espacio no encontrado con ID: " + spaceId));
-        
-        // 2. Validar que sea un espacio al aire libre
+
         if (!space.isOutdoor()) {
             log.warn("Attempting to get weather for indoor space: {}", spaceId);
             throw new IndoorSpaceException(
                     "El espacio '" + space.getName() + "' es interior y no requiere información del clima");
         }
-        
-        // 3. Validar que tenga coordenadas en la ubicación
-        // Para este sistema, asumimos que location contiene "lat,lon" o usamos coordenadas por defecto
-        double latitude = 9.9281;  // San José, CR por defecto
+
+        double latitude = 9.9281;
         double longitude = -84.0907;
-        
-        // Intentar extraer coordenadas del location si está en formato "lat,lon"
+
         if (space.getLocation() != null && space.getLocation().contains(",")) {
             try {
                 String[] parts = space.getLocation().split(",");
@@ -64,53 +51,43 @@ public class WeatherService {
                 log.warn("Could not parse coordinates from location: {}, using default", space.getLocation());
             }
         }
-        
-        // 4. Consultar API del clima
+
         try {
             OpenWeatherResponseDTO weatherData = weatherApiClient.getWeatherByCoordinates(latitude, longitude);
-            
-            // 5. Transformar a DTO y agregar recomendaciones
+
             return buildWeatherDTO(weatherData, space.getName(), "API");
-            
+
         } catch (WeatherApiException e) {
             log.error("Error fetching weather for space {}", spaceId, e);
-            // Si falla, intentar devolver fallback manual
+
             return buildFallbackWeatherDTO(space.getName(), latitude, longitude);
         }
     }
 
-    /**
-     * Obtiene el clima por ubicación/ciudad
-     * @param location Nombre de la ciudad (ej: "San Jose,CR")
-     * @return Información del clima con recomendaciones
-     */
     @Cacheable(value = "weatherCache", key = "'location_' + #location")
     public WeatherDTO getWeatherByLocation(String location) {
         log.info("Fetching weather for location: {}", location);
-        
+
         if (location == null || location.trim().isEmpty()) {
             throw new WeatherApiException("La ubicación no puede estar vacía");
         }
-        
+
         try {
             OpenWeatherResponseDTO weatherData = weatherApiClient.getWeatherByLocation(location);
             return buildWeatherDTO(weatherData, location, "API");
-            
+
         } catch (WeatherApiException e) {
             log.error("Error fetching weather for location {}", location, e);
             return buildFallbackWeatherDTO(location, 0.0, 0.0);
         }
     }
 
-    /**
-     * Construye el DTO de clima a partir de la respuesta de la API
-     */
     private WeatherDTO buildWeatherDTO(OpenWeatherResponseDTO weatherData, String location, String dataSource) {
         OpenWeatherResponseDTO.Current current = weatherData.getCurrent();
-        OpenWeatherResponseDTO.Daily today = weatherData.getDaily() != null && !weatherData.getDaily().isEmpty() 
-                ? weatherData.getDaily().get(0) 
+        OpenWeatherResponseDTO.Daily today = weatherData.getDaily() != null && !weatherData.getDaily().isEmpty()
+                ? weatherData.getDaily().get(0)
                 : null;
-        
+
         Double temperature = current.getTemp();
         Double feelsLike = current.getFeelsLike();
         String description = current.getWeather() != null && !current.getWeather().isEmpty()
@@ -120,14 +97,12 @@ public class WeatherService {
         Double windSpeed = current.getWindSpeed();
         Integer cloudiness = current.getClouds();
         Double rainProbability = today != null ? today.getPop() * 100 : 0.0;
-        
-        // Determinar si es apto para actividades al aire libre
+
         boolean isOutdoorFriendly = determineOutdoorFriendly(temperature, rainProbability, windSpeed);
-        
-        // Generar recomendación
+
         String recommendation = generateRecommendation(
                 isOutdoorFriendly, temperature, rainProbability, windSpeed);
-        
+
         return WeatherDTO.builder()
                 .location(location)
                 .temperature(temperature)
@@ -146,9 +121,6 @@ public class WeatherService {
                 .build();
     }
 
-    /**
-     * Construye un DTO de fallback cuando la API falla
-     */
     private WeatherDTO buildFallbackWeatherDTO(String location, Double lat, Double lon) {
         return WeatherDTO.builder()
                 .location(location)
@@ -168,41 +140,30 @@ public class WeatherService {
                 .build();
     }
 
-    /**
-     * Determina si las condiciones son aptas para actividades al aire libre
-     * 
-     * Criterios:
-     * - Temperatura entre 15°C y 30°C
-     * - Probabilidad de lluvia < 30%
-     * - Velocidad del viento < 10 m/s
-     */
     private boolean determineOutdoorFriendly(Double temperature, Double rainProbability, Double windSpeed) {
         if (temperature == null || rainProbability == null || windSpeed == null) {
             return false;
         }
-        
+
         boolean tempOk = temperature >= 15 && temperature <= 30;
         boolean rainOk = rainProbability < 30;
         boolean windOk = windSpeed < 10;
-        
+
         return tempOk && rainOk && windOk;
     }
 
-    /**
-     * Genera una recomendación personalizada basada en las condiciones
-     */
     private String generateRecommendation(
-            boolean isOutdoorFriendly, 
-            Double temperature, 
-            Double rainProbability, 
+            boolean isOutdoorFriendly,
+            Double temperature,
+            Double rainProbability,
             Double windSpeed) {
-        
+
         if (isOutdoorFriendly) {
             return "Condiciones ideales para actividades al aire libre. ¡Disfruta tu reserva!";
         }
-        
+
         StringBuilder recommendation = new StringBuilder("Se recomienda reprogramar la reserva:");
-        
+
         if (temperature != null) {
             if (temperature < 15) {
                 recommendation.append(" Temperatura baja (").append(String.format("%.1f", temperature)).append("°C).");
@@ -210,23 +171,20 @@ public class WeatherService {
                 recommendation.append(" Temperatura alta (").append(String.format("%.1f", temperature)).append("°C).");
             }
         }
-        
+
         if (rainProbability != null && rainProbability >= 30) {
             recommendation.append(" Alta probabilidad de lluvia (")
                     .append(String.format("%.0f", rainProbability)).append("%).");
         }
-        
+
         if (windSpeed != null && windSpeed >= 10) {
             recommendation.append(" Vientos fuertes (")
                     .append(String.format("%.1f", windSpeed)).append(" m/s).");
         }
-        
+
         return recommendation.toString();
     }
 
-    /**
-     * Health check del servicio
-     */
     public boolean isHealthy() {
         try {
             return weatherApiClient.isHealthy();

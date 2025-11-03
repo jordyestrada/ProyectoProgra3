@@ -11,7 +11,6 @@ public class DockerWebSecurityCustomizer {
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
-        // Completely bypass Spring Security filters for these paths in the docker profile
         return (web) -> web.ignoring().requestMatchers("/actuator/health", "/actuator/info", "/ping");
     }
 }

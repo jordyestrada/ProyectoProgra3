@@ -32,17 +32,6 @@ public class UserController {
         return userService.getById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /**
-     * Endpoint para que un ADMIN cambie el rol de un usuario.
-     * 
-     * Solo usuarios con rol ADMIN pueden ejecutar esta operación.
-     * El sistema enviará automáticamente un correo electrónico al usuario
-     * informándole sobre el cambio de rol.
-     * 
-     * @param request contiene el userId y el nuevo roleCode
-     * @param authentication información del usuario autenticado
-     * @return el UserDto actualizado
-     */
     @PatchMapping("/change-role")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> changeUserRole(

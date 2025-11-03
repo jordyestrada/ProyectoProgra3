@@ -54,7 +54,6 @@ public class JwtService {
         Date expiryDate = new Date(now.getTime() + jwtProperties.getExpiration());
 
         Map<String, Object> claims = new HashMap<>();
-        // Mejor en lista para evitar ambigüedad
         claims.put("authorities", java.util.List.of(authorities));
 
         return Jwts.builder()
@@ -86,8 +85,6 @@ public class JwtService {
         if (value instanceof String) {
             return (String) value;
         }
-        // If the claim was stored as a List (e.g., List<String>), this method's contract
-        // is to return a comma-separated String or null when not applicable.
         if (value instanceof List<?>) {
             return null;
         }
@@ -110,7 +107,6 @@ public class JwtService {
                     .parseSignedClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException ex) {
-            // JwtException covers signature, malformed, expired, unsupported, etc.
             log.error("Invalid JWT: {}", ex.getMessage());
             return false;
         }

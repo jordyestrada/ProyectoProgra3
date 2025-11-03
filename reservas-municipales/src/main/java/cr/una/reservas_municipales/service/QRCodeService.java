@@ -20,25 +20,19 @@ public class QRCodeService {
     private static final int QR_CODE_WIDTH = 300;
     private static final int QR_CODE_HEIGHT = 300;
     
-    /**
-     * Genera un código QR único para una reserva
-     * @param reservationId ID de la reserva
-     * @param userId ID del usuario
-     * @param spaceId ID del espacio
-     * @return String en Base64 del código QR generado
-     */
+    
     public String generateQRCode(UUID reservationId, UUID userId, UUID spaceId) {
         try {
-            // Crear el contenido del QR con información de validación
+            
             String qrContent = createQRContent(reservationId, userId, spaceId);
             log.info("Generating QR code for reservation: {}", reservationId);
             
-            // Generar el código QR
+            
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
             BitMatrix bitMatrix = qrCodeWriter.encode(qrContent, BarcodeFormat.QR_CODE, 
                                                      QR_CODE_WIDTH, QR_CODE_HEIGHT);
             
-            // Convertir a imagen y luego a Base64
+            
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(bitMatrix, "PNG", outputStream);
             byte[] qrCodeBytes = outputStream.toByteArray();
@@ -54,17 +48,12 @@ public class QRCodeService {
         }
     }
     
-    /**
-     * Valida un código QR escaneado
-     * @param qrContent Contenido del QR escaneado
-     * @param reservationId ID de la reserva a validar
-     * @return true si el QR es válido para la reserva
-     */
+    
     public boolean validateQRCode(String qrContent, UUID reservationId) {
         try {
             log.info("Validating QR code for reservation: {}", reservationId);
             
-            // Extraer el UUID de la reserva del contenido del QR
+            
             UUID qrReservationId = extractReservationIdFromQR(qrContent);
             
             boolean isValid = reservationId.equals(qrReservationId);
@@ -78,19 +67,13 @@ public class QRCodeService {
         }
     }
     
-    /**
-     * Crea el contenido del código QR con formato estructurado
-     */
     private String createQRContent(UUID reservationId, UUID userId, UUID spaceId) {
-        // Formato: RESERVA:reservationId:userId:spaceId:timestamp
+        
         long timestamp = System.currentTimeMillis();
         return String.format("RESERVA:%s:%s:%s:%d", 
                            reservationId, userId, spaceId, timestamp);
     }
     
-    /**
-     * Extrae el ID de la reserva del contenido del QR
-     */
     private UUID extractReservationIdFromQR(String qrContent) {
         try {
             String[] parts = qrContent.split(":");

@@ -11,9 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Controlador REST para endpoints del clima
- */
 @RestController
 @RequestMapping("/api/weather")
 @RequiredArgsConstructor
@@ -22,10 +19,6 @@ public class WeatherController {
 
     private final WeatherService weatherService;
 
-    /**
-     * GET /api/weather/space/{spaceId}
-     * Obtiene el clima para un espacio específico
-     */
     @GetMapping("/space/{spaceId}")
     public ResponseEntity<WeatherDTO> getWeatherForSpace(@PathVariable UUID spaceId) {
         log.info("GET /api/weather/space/{}", spaceId);
@@ -34,10 +27,6 @@ public class WeatherController {
         return ResponseEntity.ok(weather);
     }
 
-    /**
-     * GET /api/weather/location?location=X
-     * Obtiene el clima por ciudad/ubicación
-     */
     @GetMapping("/location")
     public ResponseEntity<WeatherDTO> getWeatherByLocation(
             @RequestParam(name = "location") String location) {
@@ -47,10 +36,6 @@ public class WeatherController {
         return ResponseEntity.ok(weather);
     }
 
-    /**
-     * GET /api/weather/health
-     * Health check del servicio (solo ADMIN)
-     */
     @GetMapping("/health")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> healthCheck() {
